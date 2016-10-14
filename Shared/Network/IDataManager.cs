@@ -8,8 +8,8 @@ namespace Shared.Data
 {
     public interface IDataManager
     {
-        event EventHandler OnDataReceived;
+        event EventHandler<MessageEventArgs> OnDataReceived;
 
-        void WriteData(object data, object target);
+        void WriteData(object data, object target, object[] args);
     }
 }

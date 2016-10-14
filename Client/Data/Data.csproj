@@ -40,12 +40,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="NetworkManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Shared\Network\Data.csproj">
+    <ProjectReference Include="..\..\Shared\Network\SharedData.csproj">
       <Project>{b77eb4e1-2545-4178-8b30-891458c763e7}</Project>
-      <Name>Data</Name>
+      <Name>SharedData</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

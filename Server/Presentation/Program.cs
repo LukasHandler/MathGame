@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Server.Application;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,6 +11,8 @@ namespace Server.Presentation
     {
         static void Main(string[] args)
         {
+            NetworkService serverService = new NetworkService();
+            Console.ReadLine();
         }
     }
 }

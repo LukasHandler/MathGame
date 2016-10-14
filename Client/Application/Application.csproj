@@ -40,9 +40,15 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="MessageProcessor.cs" />
+    <Compile Include="NetworkService.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\Shared\Network\SharedData.csproj">
+      <Project>{b77eb4e1-2545-4178-8b30-891458c763e7}</Project>
+      <Name>SharedData</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Data\Data.csproj">
       <Project>{0377e6de-32ff-4a74-9151-5e2d9dabc5c0}</Project>
       <Name>Data</Name>

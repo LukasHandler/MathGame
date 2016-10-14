@@ -13,9 +13,20 @@ namespace Client.Presentation.ViewModels
 {
     public class MainViewModel : INotifyPropertyChanged
     {
+        public MainViewModel()
+        {
+            this.PlayerName = "horst";
+            this.ServerAddress = IPAddress.Parse("127.0.0.1");
+            this.ServerPort = 4713;
+        }
+
         public event PropertyChangedEventHandler PropertyChanged;
 
-        private RelayCommand connectCommand;
+        private RelayCommand connect;
+
+        private RelayCommand submitAnswer;
+
+        private RelayCommand getScores;
 
         private string question;
 
@@ -61,16 +72,23 @@ namespace Client.Presentation.ViewModels
             }
         }
 
-        public RelayCommand ConnectCommand
+        public RelayCommand Connect
         {
             get
             {
-                if (this.connectCommand == null)
+                if (this.connect == null)
                 {
                     Action<object> execute = delegate (object argument)
                     {
-                        MessageBox.Show("asdf");
-                        this.IsConnected = true;
+                        try
+                        {
+                            Application.NetworkService.ConnectToServer(this.ServerAddress, this.ServerPort);
+                            this.IsConnected = true;
+                        }
+                        catch (Exception exc)
+                        {
+                            MessageBox.Show(exc.Message);
+                        }
                     };
 
                     Predicate<object> canExecute = delegate (object argument)
@@ -88,15 +106,47 @@ namespace Client.Presentation.ViewModels
                         }
                     };
 
-                    this.connectCommand = new RelayCommand(execute, canExecute);
+                    this.connect = new RelayCommand(execute, canExecute);
                 }
 
-                return this.connectCommand;
+                return this.connect;
             }
         }
 
-        public MainViewModel()
+        public RelayCommand Submit
         {
+            get
+            {
+                if (this.submitAnswer == null)
+                {
+                    Action<object> execute = delegate (object argument)
+                    {
+                        MessageBox.Show("asdf");
+                    };
+
+                    this.submitAnswer = new RelayCommand(execute);
+                }
+
+                return this.submitAnswer;
+            }
+        }
+
+        public RelayCommand GetScores
+        {
+            get
+            {
+                if (this.getScores == null)
+                {
+                    Action<object> execute = delegate (object argument)
+                    {
+                        MessageBox.Show("asdf");
+                    };
+
+                    this.getScores = new RelayCommand(execute);
+                }
+
+                return this.getScores;
+            }
         }
 
         //http://www.pmbs.de/inotifypropertychanged-robust-und-ohne-strings-callermembername-mvvm/

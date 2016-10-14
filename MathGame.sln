@@ -33,7 +33,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Application", "Server\Appli
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shared", "Shared", "{72C04B65-5405-46F3-8493-1E3376E2D6BD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Data", "Shared\Network\Data.csproj", "{B77EB4E1-2545-4178-8B30-891458C763E7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharedData", "Shared\Network\SharedData.csproj", "{B77EB4E1-2545-4178-8B30-891458C763E7}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Monitor", "Monitor", "{34EC554E-F5A0-4100-BECD-9B32DFF68C77}"
 EndProject
