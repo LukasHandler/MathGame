@@ -18,13 +18,26 @@ namespace Monitor.Application
 
         private static IPEndPoint localEndPoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 4714);
 
+        public static EventHandler<LoggingEventArgs> OnLoggingDataReceived;
+
         static NetworkService()
         {
             messageProcessor = new MessageProcessor();
             messageProcessor.OnConnectionAccepted += ConnectionAccepted;
+            messageProcessor.OnLoggingMessage += ReceivedLoggingMessage;
 
             clientManager = new TcpClientManager(localEndPoint);
             clientManager.OnDataReceived += messageProcessor.DataReceived;
+        }
+
+        private static void ReceivedLoggingMessage(object sender, MessageEventArgs e)
+        {
+            if (OnLoggingDataReceived != null)
+            {
+                string loggingMessage = ((LoggingMessage)e.MessageContent).Text;
+
+                OnLoggingDataReceived(sender, new LoggingEventArgs(loggingMessage));
+            }
         }
 
         private static void ConnectionAccepted(object sender, MessageEventArgs e)
@@ -34,7 +47,7 @@ namespace Monitor.Application
 
         public static void Connect(IPEndPoint serverEndPoint)
         {
-            ConnectionRequestMonitor requestMessage = new ConnectionRequestMonitor()
+            ConnectionRequestMonitorMessage requestMessage = new ConnectionRequestMonitorMessage()
             {
                 SenderEndPoint = localEndPoint
             };

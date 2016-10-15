@@ -52,7 +52,7 @@ namespace Client.Application
         {
             serverEndPoint = server;
 
-            ConnectionRequestClient request = new ConnectionRequestClient()
+            ConnectionRequestClientMessage request = new ConnectionRequestClientMessage()
             {
                 SenderEndPoint = localEndPoint,
                 PlayerName = playerName
@@ -63,7 +63,7 @@ namespace Client.Application
 
         public static void SubmitAnswer(int answer)
         {
-            Answer answerMessage = new Answer()
+            AnswerMessage answerMessage = new AnswerMessage()
             {
                 SenderEndPoint = serverEndPoint,
                 Solution = answer
@@ -84,7 +84,7 @@ namespace Client.Application
 
         public static void Disconnect()
         {
-            Disconnect disconnectMessage = new Disconnect()
+            DisconnectMessage disconnectMessage = new DisconnectMessage()
             {
                 SenderEndPoint = localEndPoint
             };

@@ -50,6 +50,10 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\Shared\Network\SharedData.csproj">
+      <Project>{b77eb4e1-2545-4178-8b30-891458c763e7}</Project>
+      <Name>SharedData</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Application\Application.csproj">
       <Project>{9759ad10-e569-4550-a1f6-f44b746bb4eb}</Project>
       <Name>Application</Name>

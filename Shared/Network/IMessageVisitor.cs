@@ -9,28 +9,30 @@ namespace Shared.Data
 {
     public interface IMessageVisitor
     {
-        void ProcessMessage(Answer message);
+        void ProcessMessage(AnswerMessage message);
 
-        void ProcessMessage(WrongAnswer message);
+        void ProcessMessage(WrongAnswerMessage message);
 
-        void ProcessMessage(RightAnswer message);
+        void ProcessMessage(RightAnswerMessage message);
 
         void ProcessMessage(ConnectionAcceptMessage message);
 
-        void ProcessMessage(ConnectionDenied message);
+        void ProcessMessage(ConnectionDeniedMessage message);
 
-        void ProcessMessage(ConnectionRequestClient message);
+        void ProcessMessage(ConnectionRequestClientMessage message);
 
-        void ProcessMessage(HighScoreRequest message);
+        void ProcessMessage(ScoresRequestMessage message);
 
-        void ProcessMessage(HighScoreResponse message);
+        void ProcessMessage(ScoresResponseMessage message);
 
-        void ProcessMessage(Question message);
+        void ProcessMessage(QuestionMessage message);
 
-        void ProcessMessage(Disconnect message);
+        void ProcessMessage(DisconnectMessage message);
 
-        void ProcessMessage(ConnectionRequestMonitor message);
+        void ProcessMessage(ConnectionRequestMonitorMessage message);
 
-        void ProcessMessage(ConnectionRequestServer message);
+        void ProcessMessage(ConnectionRequestServerMessage message);
+
+        void ProcessMessage(LoggingMessage message);
     }
 }

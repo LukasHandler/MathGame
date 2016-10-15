@@ -14,10 +14,12 @@ namespace Shared.Data.Managers
 {
     public class UdpServerManager : IDataManager
     {
-        UdpClient udpStream;
+        private UdpClient udpStream;
+        private IPEndPoint localEndPoint;
 
         public UdpServerManager(IPEndPoint localEndPoint)
         {
+            this.localEndPoint = localEndPoint;
             udpStream = new UdpClient(localEndPoint);
             udpStream.BeginReceive(ReceivedData, null);
         }

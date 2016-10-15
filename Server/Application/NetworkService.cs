@@ -7,6 +7,7 @@ using Shared.Data;
 using System.Net;
 using Shared.Data.Messages;
 using Shared.Data.Managers;
+using System.Reflection;
 
 namespace Server.Application
 {
@@ -26,6 +27,8 @@ namespace Server.Application
 
         private IPEndPoint localEndPointMonitors = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 4699);
 
+        private string serverName = "Server1";
+
         private object locker;
 
         public NetworkService()
@@ -34,7 +37,8 @@ namespace Server.Application
 
             this.messageProcessor = new MessageProcessor();
             this.messageProcessor.OnConnectionRequestClient += ConnectionRequestedClient;
-            this.messageProcessor.OnDisconnect += ClientDisconnect;
+            this.messageProcessor.OnDisconnect += Disconnect;
+            this.messageProcessor.OnAnswer += SubmitAnswer;
 
             this.messageProcessor.OnConnectionRequestMonitor += ConnectionRequestedMonitor;
 
@@ -49,16 +53,20 @@ namespace Server.Application
             this.monitors = new List<IPEndPoint>();
         }
 
+        private void SubmitAnswer(object sender, MessageEventArgs e)
+        {
+            throw new NotImplementedException();
+        }
+
         private void ConnectionRequestedMonitor(object sender, MessageEventArgs e)
         {
-            ConnectionRequestMonitor request = (ConnectionRequestMonitor)e.MessageContent;
+            ConnectionRequestMonitorMessage request = (ConnectionRequestMonitorMessage)e.MessageContent;
 
             lock(locker)
             {
-                if (this.monitors.Any(p => p.Address.ToString() == request.SenderEndPoint.Address.ToString() 
-                && p.Port == request.SenderEndPoint.Port))
+                if (this.monitors.Any(p => IPEndPoint.Equals(p, request.SenderEndPoint)))
                 {
-                    ConnectionDenied deniedMessage = new ConnectionDenied();
+                    ConnectionDeniedMessage deniedMessage = new ConnectionDeniedMessage();
                     monitorManager.WriteData(deniedMessage, request.SenderEndPoint);
                 }
                 else
@@ -70,14 +78,13 @@ namespace Server.Application
             }
         }
 
-        private void ClientDisconnect(object sender, MessageEventArgs e)
+        private void Disconnect(object sender, MessageEventArgs e)
         {
-            Disconnect disconnectMessage = (Disconnect)e.MessageContent;
+            DisconnectMessage disconnectMessage = (DisconnectMessage)e.MessageContent;
 
-            if (this.clients.ContainsValue(disconnectMessage.SenderEndPoint))
+            if (this.clients.Any(p => IPEndPoint.Equals(p.Value, disconnectMessage.SenderEndPoint)))
             {
-                var playerName = this.clients.Where(p => p.Value.Address.ToString() == disconnectMessage.SenderEndPoint.Address.ToString()
-                                                    && p.Value.Port == disconnectMessage.SenderEndPoint.Port).First().Key;
+                var playerName = this.clients.First(p => IPEndPoint.Equals(p.Value, disconnectMessage.SenderEndPoint)).Key;
                 this.clients.Remove(playerName);
             }
             else
@@ -88,13 +95,15 @@ namespace Server.Application
 
         private void ConnectionRequestedClient(object sender, MessageEventArgs e)
         {
-            ConnectionRequestClient request = (ConnectionRequestClient)e.MessageContent;
+            //LogText()
+
+            ConnectionRequestClientMessage request = (ConnectionRequestClientMessage)e.MessageContent;
 
             lock (locker)
             {
                 if (this.clients.ContainsKey(request.PlayerName) || this.clients.ContainsValue(request.SenderEndPoint))
                 {
-                    ConnectionDenied deniedMessage = new ConnectionDenied();
+                    ConnectionDeniedMessage deniedMessage = new ConnectionDeniedMessage();
                     clientManager.WriteData(deniedMessage, request.SenderEndPoint);
                 }
                 else
@@ -107,6 +116,50 @@ namespace Server.Application
                 }
             }
 
+        }
+
+        private void LogText(string loggingText)
+        {
+            #region reflectionLogging
+            //var message = e.MessageContent;
+            //Type messageType = message.GetType();
+
+            //string messageName = messageType.Name.Split(new string[] { "Message" }, StringSplitOptions.RemoveEmptyEntries)[0];
+            //string senderIp = message.SenderEndPoint.ToString();
+
+            //string recipientIp = e.Recipient.ToString();
+            //recipientIp += string.Format(" ({0}) ", serverName);
+
+            //if (clients.Any(p => IPEndPoint.Equals(p, message.SenderEndPoint)))
+            //{
+            //    senderIp += string.Format(" ({0}) ", clients.First(p => IPEndPoint.Equals(p, message.SenderEndPoint)));
+            //}
+
+            //var properties = messageType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            //string propertyStrings = string.Empty;
+
+            //fullLoggingText = string.Format("{0} from {1} to {2}", messageName, senderIp, recipientIp);
+
+            //if (properties.Count() != 0)
+            //{
+            //    foreach (var property in properties)
+            //    {
+            //        if (property.Name != "SenderEndPoint")
+            //        {
+            //            propertyStrings += string.Format("{0}: {1},", property.Name, property.GetValue(message));
+            //        }
+            //    }
+
+            //    fullLoggingText += " arguments " + propertyStrings;
+            //}
+            #endregion
+
+            LoggingMessage loggingMessage = new LoggingMessage()
+            {
+                Text = loggingText
+            };
+
+            monitors.ForEach(p => monitorManager.WriteData(loggingMessage, p));
         }
     }
 }

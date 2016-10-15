@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace Shared.Data.Messages
 {
     [Serializable]
-    public class HighScoreResponse : Message
+    public class DisconnectMessage : Message
     {
         public override void ProcessMessage(IMessageVisitor processor)
         {

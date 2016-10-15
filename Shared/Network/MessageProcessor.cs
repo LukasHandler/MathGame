@@ -32,42 +32,44 @@ namespace Shared.Data
 
         public EventHandler<MessageEventArgs> OnConnectionRequestServer;
 
-        public void ProcessMessage(HighScoreRequest message)
+        public EventHandler<MessageEventArgs> OnLoggingMessage;
+
+        public void ProcessMessage(ScoresRequestMessage message)
         {
             RaiseEvent(OnScoreRequest, message);
         }
 
-        public void ProcessMessage(ConnectionRequestClient message)
+        public void ProcessMessage(ConnectionRequestClientMessage message)
         {
             RaiseEvent(OnConnectionRequestClient, message);
         }
 
-        public void ProcessMessage(Answer message)
+        public void ProcessMessage(AnswerMessage message)
         {
             RaiseEvent(OnAnswer, message);
         }
 
-        public void ProcessMessage(RightAnswer message)
+        public void ProcessMessage(RightAnswerMessage message)
         {
             RaiseEvent(OnRightAnswer, message);
         }
 
-        public void ProcessMessage(WrongAnswer message)
+        public void ProcessMessage(WrongAnswerMessage message)
         {
             RaiseEvent(OnWrongAnswer, message);
         }
 
-        public void ProcessMessage(ConnectionDenied message)
+        public void ProcessMessage(ConnectionDeniedMessage message)
         {
             RaiseEvent(OnConnectionDenied, message);
         }
 
-        public void ProcessMessage(Question message)
+        public void ProcessMessage(QuestionMessage message)
         {
             RaiseEvent(OnQuestion, message);
         }
 
-        public void ProcessMessage(HighScoreResponse message)
+        public void ProcessMessage(ScoresResponseMessage message)
         {
             RaiseEvent(OnScoreRequest, message);
         }
@@ -77,19 +79,24 @@ namespace Shared.Data
             RaiseEvent(OnConnectionAccepted, message);
         }
 
-        public void ProcessMessage(Disconnect message)
+        public void ProcessMessage(DisconnectMessage message)
         {
             RaiseEvent(this.OnDisconnect, message);
         }
 
-        public void ProcessMessage(ConnectionRequestMonitor message)
+        public void ProcessMessage(ConnectionRequestMonitorMessage message)
         {
             this.RaiseEvent(OnConnectionRequestMonitor, message);
         }
 
-        public void ProcessMessage(ConnectionRequestServer message)
+        public void ProcessMessage(ConnectionRequestServerMessage message)
         {
             this.RaiseEvent(OnConnectionRequestServer, message);
+        }
+
+        public void ProcessMessage(LoggingMessage message)
+        {
+            this.RaiseEvent(OnLoggingMessage, message);
         }
 
         public void RaiseEvent(EventHandler<MessageEventArgs> eventHandler, Message message)

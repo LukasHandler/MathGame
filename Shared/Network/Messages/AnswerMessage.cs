@@ -7,8 +7,10 @@ using System.Threading.Tasks;
 namespace Shared.Data.Messages
 {
     [Serializable]
-    public class ConnectionDenied : Message
+    public class AnswerMessage : Message
     {
+        public int Solution { get; set; }
+
         public override void ProcessMessage(IMessageVisitor processor)
         {
             processor.ProcessMessage(this);

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Shared.Data.Messages
 {
-    class AnswerAccepted
+    class AnswerAcceptedMessage
     {
     }
 }

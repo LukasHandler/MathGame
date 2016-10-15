@@ -1,4 +1,5 @@
 ﻿using Monitor.Application;
+using Shared.Data;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,28 +14,37 @@ namespace Monitor.Presentation
         static void Main(string[] args)
         {
             IPAddress serverIp;
-            string input;
 
-            do
-            {
-                Console.Write("Server-IP: ");
-                input = Console.ReadLine();
+            //do
+            //{
+            //    Console.Write("Server-IP: " + input);
+            //    input = Console.ReadLine();
 
-            } while (!IPAddress.TryParse(input, out serverIp));
+            //} while (!IPAddress.TryParse(input, out serverIp));
 
-            int serverPort;
+            int serverPort = 0;
 
-            do
-            {
-                Console.Write("Server-Port: ");
-                input = Console.ReadLine();
+            //do
+            //{
+            //    Console.Write("Server-Port: " + serverPort);
+            //    input = Console.ReadLine();
 
-            } while (!Int32.TryParse(input, out serverPort));
+            //} while (!Int32.TryParse(input, out serverPort));
+
+            serverIp = IPAddress.Parse("127.0.0.1");
+            serverPort = 4699;
 
             IPEndPoint serverEndPoint = new IPEndPoint(serverIp, serverPort);
 
             NetworkService.Connect(serverEndPoint);
+            NetworkService.OnLoggingDataReceived += PrintLogging;
+
             Console.ReadLine();
+        }
+
+        private static void PrintLogging(object sender, LoggingEventArgs e)
+        {
+            Console.WriteLine(e.LoggingText);
         }
     }
 }

@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 
 namespace Shared.Data.Messages
 {
-    public class RightAnswer : Message
+    [Serializable]
+    public class WrongAnswerMessage : Message
     {
         public override void ProcessMessage(IMessageVisitor processor)
         {
