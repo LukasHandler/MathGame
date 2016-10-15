@@ -15,11 +15,9 @@ namespace Server.Data
     public class NetworkManager : IDataManager
     {
         UdpClient udpStream;
-        BinaryFormatter binarySerializer;
 
         public NetworkManager(int port)
         {
-            binarySerializer = new BinaryFormatter();
             udpStream = new UdpClient(port);
             udpStream.BeginReceive(ReceivedData, null);
         }
@@ -28,16 +26,12 @@ namespace Server.Data
         {
             IPEndPoint hostIp = new IPEndPoint(IPAddress.Any, 0);
             byte[] received = udpStream.EndReceive(data, ref hostIp);
-            Message receivedMessage;
 
-            using (var bufferStream = new MemoryStream(received))
-            {
-                receivedMessage = (Message)binarySerializer.Deserialize(bufferStream);
-            }
+            Message receivedMessage = MessageByteConverter.ConvertToMessage(received);
 
             if (OnDataReceived != null)
             {
-                OnDataReceived(this, new MessageEventArgs() { MessageContent = receivedMessage });
+                OnDataReceived(this, new MessageEventArgs(receivedMessage));
             }
 
             udpStream.BeginReceive(ReceivedData, null);
@@ -45,9 +39,12 @@ namespace Server.Data
 
         public event EventHandler<MessageEventArgs> OnDataReceived;
 
-        public void WriteData(object data, object target, object[] args)
+        public void WriteData(object data, object target)
         {
-
+            var targetEndpoint = (IPEndPoint)target;
+            byte[] bytes = MessageByteConverter.ConvertToBytes((Message)data);
+            udpStream.Connect(targetEndpoint);
+            udpStream.Send(bytes, bytes.Length);
         }
     }
 }

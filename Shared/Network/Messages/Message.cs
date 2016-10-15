@@ -7,26 +7,11 @@ using System.Threading.Tasks;
 
 namespace Shared.Data.Messages
 {
-    //public enum StatusCode
-    //{
-    //    ConnectionRequest,
-    //    ConnectionRefused,
-    //    ConnectionEstablished,
-    //    Question,
-    //    Answer,
-    //    AskScores,
-    //    SendScores
-    //}
-
     [Serializable]
-    public class Message
+    public abstract class Message
     {
-        public IPAddress SenderIp { get; set; }
+        public IPEndPoint SenderEndPoint { get; set; }
 
-        public int SenderPort { get; set; }
-
-        public IPAddress RecipientIp { get; set; }
-
-        public int RecipientPort { get; set; }
+        public abstract void ProcessMessage(IMessageVisitor processor);
     }
 }

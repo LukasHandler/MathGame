@@ -18,9 +18,22 @@ namespace Client.Presentation.ViewModels
             this.PlayerName = "horst";
             this.ServerAddress = IPAddress.Parse("127.0.0.1");
             this.ServerPort = 4713;
+
+            Application.NetworkService.OnConnectionAccepted += delegate (object sender, EventArgs args)
+            {
+                this.IsConnected = true;
+            };
+
+            Application.NetworkService.OnConnectionDenied += delegate (object sender, EventArgs args)
+            {
+                MessageBox.Show("Verbindung wurde vom Server nicht akzeptiert.");
+                this.IsConnected = false;
+            };
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
+
+        private RelayCommand disconnect;
 
         private RelayCommand connect;
 
@@ -82,8 +95,7 @@ namespace Client.Presentation.ViewModels
                     {
                         try
                         {
-                            Application.NetworkService.ConnectToServer(this.ServerAddress, this.ServerPort);
-                            this.IsConnected = true;
+                            Application.NetworkService.Connect(new IPEndPoint(this.ServerAddress, this.ServerPort), this.PlayerName);
                         }
                         catch (Exception exc)
                         {
@@ -93,7 +105,8 @@ namespace Client.Presentation.ViewModels
 
                     Predicate<object> canExecute = delegate (object argument)
                     {
-                        if (this.ServerAddress == default(IPAddress)
+                        if (this.IsConnected 
+                        || this.ServerAddress == default(IPAddress)
                         || this.ServerPort == default(int)
                         || this.PlayerName == default(string)
                         || this.PlayerName == string.Empty)
@@ -110,6 +123,36 @@ namespace Client.Presentation.ViewModels
                 }
 
                 return this.connect;
+            }
+        }
+
+        public RelayCommand Disconnect
+        {
+            get
+            {
+                if (this.disconnect == null)
+                {
+                    Action<object> execute = delegate (object argument)
+                    {
+                        try
+                        {
+                            Application.NetworkService.Disconnect();
+                        }
+                        catch (Exception exc)
+                        {
+                            MessageBox.Show(exc.Message);
+                        }
+                    };
+
+                    Predicate<object> canExecute = delegate (object argument)
+                    {
+                        return this.IsConnected;
+                    };
+
+                    this.disconnect = new RelayCommand(execute, canExecute);
+                }
+
+                return this.disconnect;
             }
         }
 

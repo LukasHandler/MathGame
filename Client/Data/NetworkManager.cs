@@ -17,31 +17,28 @@ namespace Client.Data
     {
         private UdpClient udpStream;
 
-        private BinaryFormatter binarySerializer = new BinaryFormatter();
+        private int senderPort;
 
         public event EventHandler<MessageEventArgs> OnDataReceived;
 
-        public void WriteData(object data, object target, object[] args)
+        public NetworkManager(int senderPort)
+        {
+            this.senderPort = senderPort;
+        }
+
+        public void WriteData(object data, object target)
         {
             var targetEndpoint = (IPEndPoint)target;
 
             if (udpStream == null)
             {
-                udpStream = new UdpClient((int)args[0]);
+                this.udpStream = new UdpClient(senderPort);
                 udpStream.Connect(targetEndpoint);
                 udpStream.BeginReceive(ReceivedData, null);
             }
-            
-            byte[] bytes;
 
-            using (var bufferStream = new MemoryStream())
-            {
-                binarySerializer.Serialize(bufferStream, data);
-                bytes = bufferStream.ToArray();
-            }
-
+            byte[] bytes = MessageByteConverter.ConvertToBytes((Message)data);
             udpStream.Send(bytes, bytes.Length);
-            
         }
 
         //http://stackoverflow.com/questions/7266101/receive-messages-continuously-using-udpclient
@@ -49,16 +46,12 @@ namespace Client.Data
         {
             IPEndPoint hostIp = new IPEndPoint(IPAddress.Any, 0);
             byte[] received = udpStream.EndReceive(data, ref hostIp);
-            Message receivedMessage;
 
-            using (var bufferStream = new MemoryStream(received))
-            {
-                 receivedMessage = (Message)binarySerializer.Deserialize(bufferStream);
-            }
+            Message receivedMessage = MessageByteConverter.ConvertToMessage(received);
 
             if (OnDataReceived != null)
             {
-                OnDataReceived(this, new MessageEventArgs() { MessageContent = receivedMessage });
+                OnDataReceived(this, new MessageEventArgs(receivedMessage));
             }
 
             udpStream.BeginReceive(ReceivedData, null);

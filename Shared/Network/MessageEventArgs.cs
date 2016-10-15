@@ -10,5 +10,10 @@ namespace Shared.Data
     public class MessageEventArgs : EventArgs
     {
         public Message MessageContent { get; set; }
+
+        public MessageEventArgs(Message messageContent)
+        {
+            this.MessageContent = messageContent;
+        }
     }
 }

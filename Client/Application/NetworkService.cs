@@ -12,34 +12,50 @@ namespace Client.Application
 {
     public static class NetworkService
     {
+        public static EventHandler OnConnectionAccepted;
+
+        public static EventHandler OnConnectionDenied;
+
         private static NetworkManager networkManager;
 
-        private static IPAddress senderIp = IPAddress.Parse("127.0.0.1");
-        private static int senderPort = 4712;
+        private static MessageProcessor messageProcessor;
 
-        private static IPAddress hostIp;
-        private static int hostPort;
+        private static IPEndPoint senderEndPoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 4712);
+
+        private static IPEndPoint serverEndPoint;
 
         static NetworkService()
         {
-            networkManager = new NetworkManager();
-            networkManager.OnDataReceived += DataReceived;
+            messageProcessor = new MessageProcessor();
+
+            networkManager = new NetworkManager(senderEndPoint.Port);
+            networkManager.OnDataReceived += messageProcessor.DataReceived;
+
+            messageProcessor.OnConnectionAccepted += delegate (object sender, MessageEventArgs args)
+            {
+                if (OnConnectionAccepted != null)
+                {
+                    OnConnectionAccepted(sender, EventArgs.Empty);
+                }
+            };
+
+            messageProcessor.OnConnectionDenied += delegate (object sender, MessageEventArgs args)
+            {
+                if (OnConnectionAccepted != null)
+                {
+                    OnConnectionDenied(sender, EventArgs.Empty);
+                }
+            };
         }
 
-        private static void DataReceived(object sender, MessageEventArgs e)
+        public static void Connect(IPEndPoint server, string playerName)
         {
-            
-        }
-
-        public static void ConnectToServer(IPAddress ip, int port)
-        {
-            hostIp = ip;
-            hostPort = port;
+            serverEndPoint = server;
 
             ConnectionRequest request = new ConnectionRequest()
             {
-                SenderIp = senderIp,
-                SenderPort = senderPort
+                SenderEndPoint = senderEndPoint,
+                PlayerName = playerName
             };
 
             Send(request);
@@ -49,8 +65,7 @@ namespace Client.Application
         {
             Answer answerMessage = new Answer()
             {
-                SenderIp = senderIp,
-                SenderPort = senderPort,
+                SenderEndPoint = serverEndPoint,
                 Solution = answer
             };
 
@@ -64,8 +79,17 @@ namespace Client.Application
 
         private static void Send(Message request)
         {
-            IPEndPoint target = new IPEndPoint(hostIp, hostPort);
-            networkManager.WriteData(request, target, new object[] { senderPort });
+            networkManager.WriteData(request, serverEndPoint);
+        }
+
+        public static void Disconnect()
+        {
+            Disconnect disconnectMessage = new Disconnect()
+            {
+                SenderEndPoint = senderEndPoint
+            };
+
+            Send(disconnectMessage);
         }
     }
 }

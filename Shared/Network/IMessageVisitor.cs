@@ -9,11 +9,11 @@ namespace Shared.Data
 {
     public interface IMessageVisitor
     {
-        void ProcessMessage(Message message);
-
         void ProcessMessage(Answer message);
 
-        void ProcessMessage(AnswerDenied message);
+        void ProcessMessage(WrongAnswer message);
+
+        void ProcessMessage(RightAnswer message);
 
         void ProcessMessage(ConnectionAccepted message);
 
@@ -26,5 +26,7 @@ namespace Shared.Data
         void ProcessMessage(HighScoreResponse message);
 
         void ProcessMessage(Question message);
+
+        void ProcessMessage(Disconnect message);
     }
 }

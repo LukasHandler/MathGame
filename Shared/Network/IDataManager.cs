@@ -10,6 +10,6 @@ namespace Shared.Data
     {
         event EventHandler<MessageEventArgs> OnDataReceived;
 
-        void WriteData(object data, object target, object[] args);
+        void WriteData(object data, object target);
     }
 }

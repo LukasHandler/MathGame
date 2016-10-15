@@ -9,5 +9,9 @@ namespace Shared.Data.Messages
     [Serializable]
     public class ConnectionAccepted : Message
     {
+        public override void ProcessMessage(IMessageVisitor processor)
+        {
+            processor.ProcessMessage(this);
+        }
     }
 }

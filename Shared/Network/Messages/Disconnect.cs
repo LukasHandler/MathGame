@@ -6,11 +6,8 @@ using System.Threading.Tasks;
 
 namespace Shared.Data.Messages
 {
-    [Serializable]
-    public class Answer : Message
+    public class Disconnect : Message
     {
-        public int Solution { get; set; }
-
         public override void ProcessMessage(IMessageVisitor processor)
         {
             processor.ProcessMessage(this);
