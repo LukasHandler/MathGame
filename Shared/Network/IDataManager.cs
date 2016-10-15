@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Shared.Data.Messages;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,6 +11,6 @@ namespace Shared.Data
     {
         event EventHandler<MessageEventArgs> OnDataReceived;
 
-        void WriteData(object data, object target);
+        void WriteData(Message data, object target);
     }
 }

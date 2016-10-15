@@ -11,6 +11,8 @@ namespace Server.Presentation
     {
         static void Main(string[] args)
         {
+            Console.WriteLine("Client Port: 4713");
+            Console.WriteLine("Monitor Port: 4699");
             NetworkService serverService = new NetworkService();
             Console.ReadLine();
         }

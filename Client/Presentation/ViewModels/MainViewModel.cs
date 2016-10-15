@@ -22,16 +22,20 @@ namespace Client.Presentation.ViewModels
             Application.NetworkService.OnConnectionAccepted += delegate (object sender, EventArgs args)
             {
                 this.IsConnected = true;
+                this.isConnecting = false;
             };
 
             Application.NetworkService.OnConnectionDenied += delegate (object sender, EventArgs args)
             {
                 MessageBox.Show("Verbindung wurde vom Server nicht akzeptiert.");
                 this.IsConnected = false;
+                this.isConnecting = false;
             };
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
+
+        private bool isConnecting = false;
 
         private RelayCommand disconnect;
 
@@ -95,17 +99,22 @@ namespace Client.Presentation.ViewModels
                     {
                         try
                         {
-                            Application.NetworkService.Connect(new IPEndPoint(this.ServerAddress, this.ServerPort), this.PlayerName);
+                            if (!isConnecting)
+                            {
+                                isConnecting = true;
+                                Application.NetworkService.Connect(new IPEndPoint(this.ServerAddress, this.ServerPort), this.PlayerName);
+                            }
                         }
                         catch (Exception exc)
                         {
                             MessageBox.Show(exc.Message);
+                            isConnecting = false;
                         }
                     };
 
                     Predicate<object> canExecute = delegate (object argument)
                     {
-                        if (this.IsConnected 
+                        if (this.IsConnected
                         || this.ServerAddress == default(IPAddress)
                         || this.ServerPort == default(int)
                         || this.PlayerName == default(string)
@@ -137,6 +146,7 @@ namespace Client.Presentation.ViewModels
                         try
                         {
                             Application.NetworkService.Disconnect();
+                            this.IsConnected = false;
                         }
                         catch (Exception exc)
                         {

@@ -11,33 +11,33 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 
-namespace Client.Data
+namespace Shared.Data.Managers
 {
-    public class NetworkManager : IDataManager
+    public class UdpClientManager : IDataManager
     {
         private UdpClient udpStream;
 
-        private int senderPort;
+        private IPEndPoint localEndPoint;
 
         public event EventHandler<MessageEventArgs> OnDataReceived;
 
-        public NetworkManager(int senderPort)
+        public UdpClientManager(IPEndPoint localEndPoint)
         {
-            this.senderPort = senderPort;
+            this.localEndPoint = localEndPoint;
         }
 
-        public void WriteData(object data, object target)
+        public void WriteData(Message data, object target)
         {
             var targetEndpoint = (IPEndPoint)target;
 
             if (udpStream == null)
             {
-                this.udpStream = new UdpClient(senderPort);
+                this.udpStream = new UdpClient(localEndPoint);
                 udpStream.Connect(targetEndpoint);
                 udpStream.BeginReceive(ReceivedData, null);
             }
 
-            byte[] bytes = MessageByteConverter.ConvertToBytes((Message)data);
+            byte[] bytes = MessageByteConverter.ConvertToBytes(data);
             udpStream.Send(bytes, bytes.Length);
         }
 

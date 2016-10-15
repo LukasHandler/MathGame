@@ -42,17 +42,23 @@
   <ItemGroup>
     <Compile Include="IDataManager.cs" />
     <Compile Include="IMessageVisitor.cs" />
+    <Compile Include="Managers\TcpClientManager.cs" />
+    <Compile Include="Managers\TcpServerManager.cs" />
+    <Compile Include="Managers\UdpServerManager.cs" />
+    <Compile Include="Managers\UdpClientManager.cs" />
     <Compile Include="MessageByteConverter.cs" />
     <Compile Include="MessageEventArgs.cs" />
     <Compile Include="MessageProcessor.cs" />
     <Compile Include="Messages\Answer.cs" />
     <Compile Include="Messages\AnswerAccepted.cs" />
+    <Compile Include="Messages\ConnectionRequestMonitor.cs" />
+    <Compile Include="Messages\ConnectionRequestServer.cs" />
     <Compile Include="Messages\Disconnect.cs" />
     <Compile Include="Messages\RightAnswer.cs" />
     <Compile Include="Messages\WrongAnswer.cs" />
-    <Compile Include="Messages\ConnectionAccepted.cs" />
+    <Compile Include="Messages\ConnectionAcceptMessage.cs" />
     <Compile Include="Messages\ConnectionDenied.cs" />
-    <Compile Include="Messages\ConnectionRequest.cs" />
+    <Compile Include="Messages\ConnectionRequestClient.cs" />
     <Compile Include="Messages\HighScoreRequest.cs" />
     <Compile Include="Messages\HighScoreResponse.cs" />
     <Compile Include="Messages\Message.cs" />

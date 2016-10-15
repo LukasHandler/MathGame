@@ -10,15 +10,15 @@ using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Server.Data
+namespace Shared.Data.Managers
 {
-    public class NetworkManager : IDataManager
+    public class UdpServerManager : IDataManager
     {
         UdpClient udpStream;
 
-        public NetworkManager(int port)
+        public UdpServerManager(IPEndPoint localEndPoint)
         {
-            udpStream = new UdpClient(port);
+            udpStream = new UdpClient(localEndPoint);
             udpStream.BeginReceive(ReceivedData, null);
         }
 
@@ -39,10 +39,10 @@ namespace Server.Data
 
         public event EventHandler<MessageEventArgs> OnDataReceived;
 
-        public void WriteData(object data, object target)
+        public void WriteData(Message data, object target)
         {
             var targetEndpoint = (IPEndPoint)target;
-            byte[] bytes = MessageByteConverter.ConvertToBytes((Message)data);
+            byte[] bytes = MessageByteConverter.ConvertToBytes(data);
             udpStream.Connect(targetEndpoint);
             udpStream.Send(bytes, bytes.Length);
         }

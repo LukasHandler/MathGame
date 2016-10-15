@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace Shared.Data.Messages
 {
     [Serializable]
-    public class ConnectionAccepted : Message
+    public class ConnectionRequestMonitor : Message
     {
         public override void ProcessMessage(IMessageVisitor processor)
         {

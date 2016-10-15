@@ -15,11 +15,11 @@ namespace Shared.Data
 
         void ProcessMessage(RightAnswer message);
 
-        void ProcessMessage(ConnectionAccepted message);
+        void ProcessMessage(ConnectionAcceptMessage message);
 
         void ProcessMessage(ConnectionDenied message);
 
-        void ProcessMessage(ConnectionRequest message);
+        void ProcessMessage(ConnectionRequestClient message);
 
         void ProcessMessage(HighScoreRequest message);
 
@@ -28,5 +28,9 @@ namespace Shared.Data
         void ProcessMessage(Question message);
 
         void ProcessMessage(Disconnect message);
+
+        void ProcessMessage(ConnectionRequestMonitor message);
+
+        void ProcessMessage(ConnectionRequestServer message);
     }
 }

@@ -10,7 +10,7 @@ namespace Shared.Data
 {
     public class MessageProcessor : IMessageVisitor
     {
-        public EventHandler<MessageEventArgs> OnConnectionRequest;
+        public EventHandler<MessageEventArgs> OnConnectionRequestClient;
 
         public EventHandler<MessageEventArgs> OnScoreRequest;
 
@@ -28,14 +28,18 @@ namespace Shared.Data
 
         public EventHandler<MessageEventArgs> OnDisconnect;
 
+        public EventHandler<MessageEventArgs> OnConnectionRequestMonitor;
+
+        public EventHandler<MessageEventArgs> OnConnectionRequestServer;
+
         public void ProcessMessage(HighScoreRequest message)
         {
             RaiseEvent(OnScoreRequest, message);
         }
 
-        public void ProcessMessage(ConnectionRequest message)
+        public void ProcessMessage(ConnectionRequestClient message)
         {
-            RaiseEvent(OnConnectionRequest, message);
+            RaiseEvent(OnConnectionRequestClient, message);
         }
 
         public void ProcessMessage(Answer message)
@@ -68,7 +72,7 @@ namespace Shared.Data
             RaiseEvent(OnScoreRequest, message);
         }
 
-        public void ProcessMessage(ConnectionAccepted message)
+        public void ProcessMessage(ConnectionAcceptMessage message)
         {
             RaiseEvent(OnConnectionAccepted, message);
         }
@@ -76,6 +80,16 @@ namespace Shared.Data
         public void ProcessMessage(Disconnect message)
         {
             RaiseEvent(this.OnDisconnect, message);
+        }
+
+        public void ProcessMessage(ConnectionRequestMonitor message)
+        {
+            this.RaiseEvent(OnConnectionRequestMonitor, message);
+        }
+
+        public void ProcessMessage(ConnectionRequestServer message)
+        {
+            this.RaiseEvent(OnConnectionRequestServer, message);
         }
 
         public void RaiseEvent(EventHandler<MessageEventArgs> eventHandler, Message message)
