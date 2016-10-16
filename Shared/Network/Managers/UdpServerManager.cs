@@ -14,39 +14,53 @@ namespace Shared.Data.Managers
 {
     public class UdpServerManager : IDataManager
     {
-        private UdpClient udpStream;
-        private IPEndPoint localEndPoint;
+        private UdpClient receiveClient;
+        private UdpClient sendClient;
+        private Dictionary<Guid, IPEndPoint> ipAdresses;
 
         public UdpServerManager(IPEndPoint localEndPoint)
         {
-            this.localEndPoint = localEndPoint;
-            udpStream = new UdpClient(localEndPoint);
-            udpStream.BeginReceive(ReceivedData, null);
+            receiveClient = new UdpClient();
+            receiveClient.ExclusiveAddressUse = false;
+            receiveClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+            receiveClient.Client.Bind(localEndPoint);
+
+            this.ipAdresses = new Dictionary<Guid, IPEndPoint>();
+            receiveClient.BeginReceive(ReceivedData, null);
+
+            sendClient = new UdpClient();
+            sendClient.ExclusiveAddressUse = false;
+            sendClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+            sendClient.Client.Bind(localEndPoint);
         }
 
         private void ReceivedData(IAsyncResult data)
         {
-            IPEndPoint hostIp = new IPEndPoint(IPAddress.Any, 0);
-            byte[] received = udpStream.EndReceive(data, ref hostIp);
+            IPEndPoint senderIp = new IPEndPoint(IPAddress.Any, 0);
+            byte[] received = receiveClient.EndReceive(data, ref senderIp);
+            receiveClient.BeginReceive(ReceivedData, null);
 
             Message receivedMessage = MessageByteConverter.ConvertToMessage(received);
+            
+            if (!this.ipAdresses.ContainsKey(receivedMessage.SenderId))
+            {
+                this.ipAdresses.Add(receivedMessage.SenderId, senderIp);
+            }
 
             if (OnDataReceived != null)
             {
                 OnDataReceived(this, new MessageEventArgs(receivedMessage));
             }
-
-            udpStream.BeginReceive(ReceivedData, null);
         }
 
         public event EventHandler<MessageEventArgs> OnDataReceived;
 
         public void WriteData(Message data, object target)
         {
-            var targetEndpoint = (IPEndPoint)target;
+            var targetEndpoint = this.ipAdresses[(Guid)target];
             byte[] bytes = MessageByteConverter.ConvertToBytes(data);
-            udpStream.Connect(targetEndpoint);
-            udpStream.Send(bytes, bytes.Length);
+            sendClient.Connect(targetEndpoint);
+            sendClient.Send(bytes, bytes.Length);
         }
     }
 }

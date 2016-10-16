@@ -21,18 +21,18 @@ namespace Shared.Data.Managers
 
         public event EventHandler<MessageEventArgs> OnDataReceived;
 
-        public UdpClientManager(IPEndPoint localEndPoint)
+        public UdpClientManager()
         {
-            this.localEndPoint = localEndPoint;
+            //this.localEndPoint = localEndPoint;
         }
 
         public void WriteData(Message data, object target)
         {
             var targetEndpoint = (IPEndPoint)target;
 
-            if (udpStream == null)
+            if (udpStream == null || !IPEndPoint.Equals((IPEndPoint)udpStream.Client.RemoteEndPoint, targetEndpoint))
             {
-                this.udpStream = new UdpClient(localEndPoint);
+                this.udpStream = new UdpClient();
                 udpStream.Connect(targetEndpoint);
                 udpStream.BeginReceive(ReceivedData, null);
             }

@@ -10,8 +10,8 @@ namespace Shared.Data.Messages
     [Serializable]
     public abstract class Message
     {
-        public IPEndPoint SenderEndPoint { get; set; }
-
+        public Guid SenderId { get; set; }
+        
         public abstract void ProcessMessage(IMessageVisitor processor);
     }
 }

@@ -15,11 +15,11 @@ namespace Server.Application
     {
         private IDataManager clientManager;
 
-        private Dictionary<string, IPEndPoint> clients;
+        private Dictionary<Guid, Client> clients;
 
         private IDataManager monitorManager;
 
-        private List<IPEndPoint> monitors;
+        private List<Guid> monitors;
 
         private MessageProcessor messageProcessor;
 
@@ -27,7 +27,7 @@ namespace Server.Application
 
         private IPEndPoint localEndPointMonitors = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 4699);
 
-        private string serverName = "Server1";
+        private string serverName = "server1";
 
         private object locker;
 
@@ -45,12 +45,12 @@ namespace Server.Application
             clientManager = new UdpServerManager(localEndPointClients);
             clientManager.OnDataReceived += messageProcessor.DataReceived;
 
-            this.clients = new Dictionary<string, IPEndPoint>();
+            this.clients = new Dictionary<Guid, Client>();
 
             this.monitorManager = new TcpServerManager(localEndPointMonitors);
             this.monitorManager.OnDataReceived += messageProcessor.DataReceived;
 
-            this.monitors = new List<IPEndPoint>();
+            this.monitors = new List<Guid>();
         }
 
         private void SubmitAnswer(object sender, MessageEventArgs e)
@@ -61,19 +61,22 @@ namespace Server.Application
         private void ConnectionRequestedMonitor(object sender, MessageEventArgs e)
         {
             ConnectionRequestMonitorMessage request = (ConnectionRequestMonitorMessage)e.MessageContent;
+            LogText(string.Format("Connection request from Monitor ({0}) to \"{1}\"", request.SenderId, this.serverName));
 
-            lock(locker)
+            lock (locker)
             {
-                if (this.monitors.Any(p => IPEndPoint.Equals(p, request.SenderEndPoint)))
+                if (this.monitors.Contains(request.SenderId))
                 {
                     ConnectionDeniedMessage deniedMessage = new ConnectionDeniedMessage();
-                    monitorManager.WriteData(deniedMessage, request.SenderEndPoint);
+                    monitorManager.WriteData(deniedMessage, request.SenderId);
+                    LogText(string.Format("Connection denied from \"{0}\" to Monitor ({1})", this.serverName, request.SenderId));
                 }
                 else
                 {
-                    this.monitors.Add(request.SenderEndPoint);
+                    this.monitors.Add(request.SenderId);
                     ConnectionAcceptMessage acceptMessage = new ConnectionAcceptMessage();
-                    monitorManager.WriteData(acceptMessage, request.SenderEndPoint);
+                    monitorManager.WriteData(acceptMessage, request.SenderId);
+                    LogText(string.Format("Connection accepted from \"{0}\" to Monitor ({1})", this.serverName, request.SenderId));
                 }
             }
         }
@@ -82,10 +85,15 @@ namespace Server.Application
         {
             DisconnectMessage disconnectMessage = (DisconnectMessage)e.MessageContent;
 
-            if (this.clients.Any(p => IPEndPoint.Equals(p.Value, disconnectMessage.SenderEndPoint)))
+            if (this.clients.ContainsKey(disconnectMessage.SenderId))
             {
-                var playerName = this.clients.First(p => IPEndPoint.Equals(p.Value, disconnectMessage.SenderEndPoint)).Key;
-                this.clients.Remove(playerName);
+                LogText(string.Format("\"{0}\" disconnected from \"{1}\"", this.clients[disconnectMessage.SenderId].PlayerName, this.serverName));
+                this.clients.Remove(disconnectMessage.SenderId);
+            }
+            else if (this.monitors.Contains(disconnectMessage.SenderId))
+            {
+                LogText(string.Format("Monitor ({0}) disconnected from \"{1}\"", disconnectMessage.SenderId, this.serverName));
+                this.monitors.Remove(disconnectMessage.SenderId);
             }
             else
             {
@@ -95,23 +103,23 @@ namespace Server.Application
 
         private void ConnectionRequestedClient(object sender, MessageEventArgs e)
         {
-            //LogText()
-
             ConnectionRequestClientMessage request = (ConnectionRequestClientMessage)e.MessageContent;
+            LogText(string.Format("Connection request from \"{0}\" to \"{1}\"", request.PlayerName, this.serverName));
 
             lock (locker)
             {
-                if (this.clients.ContainsKey(request.PlayerName) || this.clients.ContainsValue(request.SenderEndPoint))
+                if (this.clients.ContainsKey(request.SenderId) || this.clients.Any(p => p.Value.PlayerName == request.PlayerName))
                 {
                     ConnectionDeniedMessage deniedMessage = new ConnectionDeniedMessage();
-                    clientManager.WriteData(deniedMessage, request.SenderEndPoint);
+                    clientManager.WriteData(deniedMessage, request.SenderId);
+                    LogText(string.Format("Connection denied from \"{0}\" to \"{1}\"", this.serverName, request.PlayerName));
                 }
                 else
                 {
-                    this.clients.Add(request.PlayerName, request.SenderEndPoint);
+                    this.clients.Add(request.SenderId, new Client(request.PlayerName));
                     ConnectionAcceptMessage acceptedMessage = new ConnectionAcceptMessage();
-                    clientManager.WriteData(acceptedMessage, request.SenderEndPoint);
-
+                    clientManager.WriteData(acceptedMessage, request.SenderId);
+                    LogText(string.Format("Connection accepted from \"{0}\" to \"{1}\"", this.serverName, request.PlayerName));
                     //Send Questions!
                 }
             }

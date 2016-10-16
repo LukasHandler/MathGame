@@ -1,4 +1,5 @@
-﻿using Client.Presentation.Utilities;
+﻿using Client.Application;
+using Client.Presentation.Utilities;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -13,23 +14,27 @@ namespace Client.Presentation.ViewModels
 {
     public class MainViewModel : INotifyPropertyChanged
     {
+        private NetworkService networkService;
+
         public MainViewModel()
         {
             this.PlayerName = "horst";
             this.ServerAddress = IPAddress.Parse("127.0.0.1");
             this.ServerPort = 4713;
 
-            Application.NetworkService.OnConnectionAccepted += delegate (object sender, EventArgs args)
+            networkService = new NetworkService();
+
+            networkService.OnConnectionAccepted += delegate (object sender, EventArgs args)
             {
                 this.IsConnected = true;
-                this.isConnecting = false;
+                //this.isConnecting = false;
             };
 
-            Application.NetworkService.OnConnectionDenied += delegate (object sender, EventArgs args)
+            networkService.OnConnectionDenied += delegate (object sender, EventArgs args)
             {
                 MessageBox.Show("Verbindung wurde vom Server nicht akzeptiert.");
                 this.IsConnected = false;
-                this.isConnecting = false;
+                //this.isConnecting = false;
             };
         }
 
@@ -81,7 +86,7 @@ namespace Client.Presentation.ViewModels
             }
             set
             {
-                if (this.isConnected = value)
+                if (this.isConnected != value)
                 {
                     this.isConnected = value;
                     this.OnPropertyChanged();
@@ -99,10 +104,10 @@ namespace Client.Presentation.ViewModels
                     {
                         try
                         {
-                            if (!isConnecting)
+                            //if (!isConnecting)
                             {
-                                isConnecting = true;
-                                Application.NetworkService.Connect(new IPEndPoint(this.ServerAddress, this.ServerPort), this.PlayerName);
+                                //isConnecting = true;
+                                networkService.Connect(new IPEndPoint(this.ServerAddress, this.ServerPort), this.PlayerName);
                             }
                         }
                         catch (Exception exc)
@@ -145,7 +150,7 @@ namespace Client.Presentation.ViewModels
                     {
                         try
                         {
-                            Application.NetworkService.Disconnect();
+                            networkService.Disconnect();
                             this.IsConnected = false;
                         }
                         catch (Exception exc)

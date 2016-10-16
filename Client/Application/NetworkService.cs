@@ -10,25 +10,27 @@ using Shared.Data.Managers;
 
 namespace Client.Application
 {
-    public static class NetworkService
+    public class NetworkService
     {
-        public static EventHandler OnConnectionAccepted;
+        public EventHandler OnConnectionAccepted;
 
-        public static EventHandler OnConnectionDenied;
+        public EventHandler OnConnectionDenied;
 
-        private static UdpClientManager networkManager;
+        private UdpClientManager networkManager;
 
-        private static MessageProcessor messageProcessor;
+        private MessageProcessor messageProcessor;
 
-        private static IPEndPoint localEndPoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 4712);
+        private IPEndPoint localEndPoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 4712);
 
-        private static IPEndPoint serverEndPoint;
+        private IPEndPoint serverEndPoint;
 
-        static NetworkService()
+        private Guid clientGuid = Guid.NewGuid();
+
+        public NetworkService()
         {
             messageProcessor = new MessageProcessor();
 
-            networkManager = new UdpClientManager(localEndPoint);
+            networkManager = new UdpClientManager();
             networkManager.OnDataReceived += messageProcessor.DataReceived;
 
             messageProcessor.OnConnectionAccepted += delegate (object sender, MessageEventArgs args)
@@ -48,45 +50,45 @@ namespace Client.Application
             };
         }
 
-        public static void Connect(IPEndPoint server, string playerName)
+        public void Connect(IPEndPoint server, string playerName)
         {
             serverEndPoint = server;
 
             ConnectionRequestClientMessage request = new ConnectionRequestClientMessage()
             {
-                SenderEndPoint = localEndPoint,
+                SenderId = clientGuid,
                 PlayerName = playerName
             };
 
             Send(request);
         }
 
-        public static void SubmitAnswer(int answer)
+        public void SubmitAnswer(int answer)
         {
             AnswerMessage answerMessage = new AnswerMessage()
             {
-                SenderEndPoint = serverEndPoint,
+                SenderId = clientGuid,
                 Solution = answer
             };
 
             Send(answerMessage);
         }
 
-        public static List<Tuple<string, int>> GetScores()
+        public List<Tuple<string, int>> GetScores()
         {
             return null;
         }
 
-        private static void Send(Message request)
+        private void Send(Message request)
         {
             networkManager.WriteData(request, serverEndPoint);
         }
 
-        public static void Disconnect()
+        public void Disconnect()
         {
             DisconnectMessage disconnectMessage = new DisconnectMessage()
             {
-                SenderEndPoint = localEndPoint
+                SenderId = clientGuid
             };
 
             Send(disconnectMessage);

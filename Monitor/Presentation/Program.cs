@@ -2,6 +2,7 @@
 using Shared.Data;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Text;
@@ -39,7 +40,8 @@ namespace Monitor.Presentation
             NetworkService.Connect(serverEndPoint);
             NetworkService.OnLoggingDataReceived += PrintLogging;
 
-            Console.ReadLine();
+            Console.ReadKey();
+            NetworkService.Disconnect();
         }
 
         private static void PrintLogging(object sender, LoggingEventArgs e)

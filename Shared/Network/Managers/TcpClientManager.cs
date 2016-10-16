@@ -11,13 +11,13 @@ namespace Shared.Data.Managers
 {
     public class TcpClientManager : IDataManager
     {
-        private IPEndPoint localEndPoint;
+        //private IPEndPoint localEndPoint;
 
         private NetworkStream stream;
 
-        public TcpClientManager(IPEndPoint localEndPoint)
+        public TcpClientManager()
         {
-            this.localEndPoint = localEndPoint;
+            //this.localEndPoint = localEndPoint;
         }
 
         public event EventHandler<MessageEventArgs> OnDataReceived;
@@ -26,7 +26,8 @@ namespace Shared.Data.Managers
         {
             if (stream == null)
             {
-                TcpClient client = new TcpClient(localEndPoint);
+                //TcpClient client = new TcpClient(localEndPoint);
+                TcpClient client = new TcpClient();
                 client.Connect((IPEndPoint)target);
 
                 stream = client.GetStream();
