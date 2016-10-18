@@ -33,10 +33,11 @@ namespace Monitor.Presentation
             //} while (!Int32.TryParse(input, out serverPort));
 
             serverIp = IPAddress.Parse("127.0.0.1");
-            serverPort = 4699;
+            serverPort = 4801;
 
             IPEndPoint serverEndPoint = new IPEndPoint(serverIp, serverPort);
 
+            Console.ReadKey();
             NetworkService.Connect(serverEndPoint);
             NetworkService.OnLoggingDataReceived += PrintLogging;
 

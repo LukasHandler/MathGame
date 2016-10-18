@@ -1,4 +1,5 @@
 ﻿using Shared.Data;
+using Shared.Data.EventArguments;
 using Shared.Data.Messages;
 using System;
 using System.Collections.Generic;
@@ -17,14 +18,7 @@ namespace Shared.Data.Managers
     {
         private UdpClient udpStream;
 
-        private IPEndPoint localEndPoint;
-
         public event EventHandler<MessageEventArgs> OnDataReceived;
-
-        public UdpClientManager()
-        {
-            //this.localEndPoint = localEndPoint;
-        }
 
         public void WriteData(Message data, object target)
         {

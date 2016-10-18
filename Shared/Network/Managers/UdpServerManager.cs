@@ -1,4 +1,5 @@
 ﻿using Shared.Data;
+using Shared.Data.EventArguments;
 using Shared.Data.Messages;
 using System;
 using System.Collections.Generic;
@@ -18,8 +19,11 @@ namespace Shared.Data.Managers
         private UdpClient sendClient;
         private Dictionary<Guid, IPEndPoint> ipAdresses;
 
-        public UdpServerManager(IPEndPoint localEndPoint)
+        public UdpServerManager(int port)
         {
+            var localEndPoint = new IPEndPoint(IPAddress.Any, port);
+
+            //http://stackoverflow.com/questions/8314168/concurrent-send-and-receive-data-in-one-port-with-udpclient
             receiveClient = new UdpClient();
             receiveClient.ExclusiveAddressUse = false;
             receiveClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);

@@ -1,4 +1,5 @@
-﻿using Shared.Data.Messages;
+﻿using Shared.Data.EventArguments;
+using Shared.Data.Messages;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,20 +11,15 @@ using System.Threading.Tasks;
 namespace Shared.Data.Managers
 {
     public class TcpServerManager : IDataManager
-    {
-        private IPEndPoint localEndPoint;
-
-        //private Dictionary<IPEndPoint, NetworkStream> streams;
-
+    { 
         private Dictionary<Guid, NetworkStream> streams;
 
-        public TcpServerManager(IPEndPoint localEndPoint)
+        public TcpServerManager(int port)
         {
-            this.localEndPoint = localEndPoint;
-            //this.streams = new Dictionary<IPEndPoint, NetworkStream>();
             this.streams = new Dictionary<Guid, NetworkStream>();
 
-            TcpListener listener = new TcpListener(this.localEndPoint);
+            IPEndPoint localEndPoint = new IPEndPoint(IPAddress.Any, port);
+            TcpListener listener = new TcpListener(localEndPoint);
             listener.Start();
 
             AcceptClients(listener);
@@ -47,7 +43,7 @@ namespace Shared.Data.Managers
                     {
                         int bytesRead = stream.EndRead(result);
                     }
-                    catch (System.IO.IOException exception)
+                    catch (System.IO.IOException)
                     {
                         return;
                     }

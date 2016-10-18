@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Shared.Data;
 using Shared.Data.Managers;
+using Shared.Data.EventArguments;
 
 namespace Client.Application
 {
@@ -15,6 +16,12 @@ namespace Client.Application
         public EventHandler OnConnectionAccepted;
 
         public EventHandler OnConnectionDenied;
+
+        public EventHandler<QuestionEventArgs> OnQuestionReceived;
+
+        public EventHandler<GameFinishedEventArgs> OnGameWon;
+
+        public EventHandler<GameFinishedEventArgs> OnGameLost;
 
         private UdpClientManager networkManager;
 
@@ -37,7 +44,7 @@ namespace Client.Application
             {
                 if (OnConnectionAccepted != null)
                 {
-                    OnConnectionAccepted(sender, EventArgs.Empty);
+                    OnConnectionAccepted(this, EventArgs.Empty);
                 }
             };
 
@@ -45,7 +52,32 @@ namespace Client.Application
             {
                 if (OnConnectionAccepted != null)
                 {
-                    OnConnectionDenied(sender, EventArgs.Empty);
+                    OnConnectionDenied(this, EventArgs.Empty);
+                }
+            };
+
+            messageProcessor.OnQuestion += delegate (object sender, MessageEventArgs args)
+            {
+                if (OnQuestionReceived != null)
+                {
+                    QuestionMessage questionMessage = args.MessageContent as QuestionMessage;
+                    this.OnQuestionReceived(this, new QuestionEventArgs(questionMessage.QuestionText, questionMessage.Time, questionMessage.Score));
+                }
+            };
+
+            messageProcessor.OnGameWonMessage += delegate (object sender, MessageEventArgs args)
+            {
+                if (this.OnGameWon != null)
+                {
+                    this.OnGameWon(this, new GameFinishedEventArgs((args.MessageContent as GameWonMessage).Score));
+                }
+            };
+
+            messageProcessor.OnGameLostMessage += delegate (object sender, MessageEventArgs args)
+            {
+                if (this.OnGameLost != null)
+                {
+                    this.OnGameLost(this, new GameFinishedEventArgs((args.MessageContent as GameLostMessage).Score));
                 }
             };
         }

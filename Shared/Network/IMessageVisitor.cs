@@ -34,5 +34,9 @@ namespace Shared.Data
         void ProcessMessage(ConnectionRequestServerMessage message);
 
         void ProcessMessage(LoggingMessage message);
+
+        void ProcessMessage(GameLostMessage message);
+
+        void ProcessMessage(GameWonMessage message);
     }
 }

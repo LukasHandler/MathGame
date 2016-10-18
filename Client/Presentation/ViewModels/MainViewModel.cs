@@ -1,46 +1,95 @@
 ﻿using Client.Application;
 using Client.Presentation.Utilities;
+using Shared.Data.EventArguments;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Net;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Data;
+using System.Windows.Threading;
 
 namespace Client.Presentation.ViewModels
 {
     public class MainViewModel : INotifyPropertyChanged
     {
+        private Thread timerThread;
+
         private NetworkService networkService;
+
+        private readonly object questionsLock = new object();
 
         public MainViewModel()
         {
             this.PlayerName = "horst";
             this.ServerAddress = IPAddress.Parse("127.0.0.1");
-            this.ServerPort = 4713;
+            this.ServerPort = 4701;
+            this.Questions = new ObservableCollection<string>();
 
             networkService = new NetworkService();
 
             networkService.OnConnectionAccepted += delegate (object sender, EventArgs args)
             {
                 this.IsConnected = true;
-                //this.isConnecting = false;
             };
 
             networkService.OnConnectionDenied += delegate (object sender, EventArgs args)
             {
                 MessageBox.Show("Verbindung wurde vom Server nicht akzeptiert.");
                 this.IsConnected = false;
-                //this.isConnecting = false;
+            };
+
+            networkService.OnQuestionReceived += delegate (object sender, QuestionEventArgs args)
+            {
+                this.Questions.Add(args.QuestionText);
+                this.Question = args.QuestionText;
+                this.Time = args.Time;
+                this.Score = args.Score;
+
+                ThreadStart timerThreadStart = new ThreadStart(this.updateQuestionTimer);
+
+                if (this.timerThread != null)
+                {
+                    this.timerThread.Abort();
+                }
+
+                timerThread = new Thread(timerThreadStart);
+                timerThread.Start();
+            };
+
+            networkService.OnGameWon += delegate (object sender, GameFinishedEventArgs args)
+            {
+                this.Score = args.Score;
+                this.timerThread.Abort();
+                this.Time = 0;
+                MessageBox.Show("Congratulations, you won!");
+            };
+
+            networkService.OnGameLost += delegate (object sender, GameFinishedEventArgs args)
+            {
+                this.Score = args.Score;
+                this.timerThread.Abort();
+                this.Time = 0;
+                MessageBox.Show("You lost!");
             };
         }
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        private void updateQuestionTimer()
+        {
+            while (this.Time != 0)
+            {
+                Thread.Sleep(1000);
+                this.Time--;
+            }
+        }
 
-        private bool isConnecting = false;
+        public event PropertyChangedEventHandler PropertyChanged;
 
         private RelayCommand disconnect;
 
@@ -49,6 +98,47 @@ namespace Client.Presentation.ViewModels
         private RelayCommand submitAnswer;
 
         private RelayCommand getScores;
+
+        private ObservableCollection<string> questions;
+
+        private int time;
+
+        private int score;
+
+        public ObservableCollection<string> Questions
+        {
+            get
+            {
+                return this.questions;
+            }
+            set
+            {
+                if (this.questions != value)
+                {
+                    this.questions = value;
+                    this.OnPropertyChanged();
+
+                    //Avoid problem when updating the observable collection from a different thread (http://stackoverflow.com/questions/2104614/updating-an-observablecollection-in-a-separate-thread)
+                    BindingOperations.EnableCollectionSynchronization(this.questions, questionsLock);
+                }
+            }
+        }
+
+        public int Time
+        {
+            get
+            {
+                return this.time;
+            }
+            set
+            {
+                if (this.time != value)
+                {
+                    this.time = value;
+                    this.OnPropertyChanged();
+                }
+            }
+        }
 
         private string question;
 
@@ -77,6 +167,22 @@ namespace Client.Presentation.ViewModels
         public int ServerPort { get; set; }
 
         public int Answer { get; set; }
+
+        public int Score
+        {
+            get
+            {
+                return this.score;
+            }
+            set
+            {
+                if (this.score != value)
+                {
+                    this.score = value;
+                    this.OnPropertyChanged();
+                }
+            }
+        }
 
         public bool IsConnected
         {
@@ -113,7 +219,6 @@ namespace Client.Presentation.ViewModels
                         catch (Exception exc)
                         {
                             MessageBox.Show(exc.Message);
-                            isConnecting = false;
                         }
                     };
 
@@ -179,7 +284,7 @@ namespace Client.Presentation.ViewModels
                 {
                     Action<object> execute = delegate (object argument)
                     {
-                        MessageBox.Show("asdf");
+                        networkService.SubmitAnswer(this.Answer);
                     };
 
                     this.submitAnswer = new RelayCommand(execute);

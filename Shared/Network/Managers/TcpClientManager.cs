@@ -1,4 +1,5 @@
-﻿using Shared.Data.Messages;
+﻿using Shared.Data.EventArguments;
+using Shared.Data.Messages;
 using System;
 using System.Collections.Generic;
 using System.Linq;

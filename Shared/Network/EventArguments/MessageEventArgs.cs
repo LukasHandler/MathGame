@@ -6,7 +6,7 @@ using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Shared.Data
+namespace Shared.Data.EventArguments
 {
     public class MessageEventArgs : EventArgs
     {

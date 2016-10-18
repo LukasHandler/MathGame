@@ -40,6 +40,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="EventArguments\GameFinishedEventArgs.cs" />
+    <Compile Include="EventArguments\QuestionEventArgs.cs" />
     <Compile Include="IDataManager.cs" />
     <Compile Include="IMessageVisitor.cs" />
     <Compile Include="LoggingEventArgs.cs" />
@@ -48,13 +50,15 @@
     <Compile Include="Managers\UdpServerManager.cs" />
     <Compile Include="Managers\UdpClientManager.cs" />
     <Compile Include="MessageByteConverter.cs" />
-    <Compile Include="MessageEventArgs.cs" />
+    <Compile Include="EventArguments\MessageEventArgs.cs" />
     <Compile Include="MessageProcessor.cs" />
     <Compile Include="Messages\AnswerMessage.cs" />
     <Compile Include="Messages\AnswerAcceptedMessage.cs" />
     <Compile Include="Messages\ConnectionRequestMonitorMessage.cs" />
     <Compile Include="Messages\ConnectionRequestServerMessage.cs" />
     <Compile Include="Messages\DisconnectMessage.cs" />
+    <Compile Include="Messages\GameLostMessage.cs" />
+    <Compile Include="Messages\GameWonMessage.cs" />
     <Compile Include="Messages\LoggingMessage.cs" />
     <Compile Include="Messages\RightAnswerMessage.cs" />
     <Compile Include="Messages\WrongAnswerMessage.cs" />

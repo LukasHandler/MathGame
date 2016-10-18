@@ -13,6 +13,8 @@ namespace Shared.Data.Messages
 
         public string QuestionText { get; set; }
 
+        public int Score { get; set; }
+
         public int Time { get; set; }
 
         public override void ProcessMessage(IMessageVisitor processor)

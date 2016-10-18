@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Shared.Data.Messages;
+using Shared.Data.EventArguments;
 
 namespace Shared.Data
 {
@@ -33,6 +34,10 @@ namespace Shared.Data
         public EventHandler<MessageEventArgs> OnConnectionRequestServer;
 
         public EventHandler<MessageEventArgs> OnLoggingMessage;
+
+        public EventHandler<MessageEventArgs> OnGameWonMessage;
+
+        public EventHandler<MessageEventArgs> OnGameLostMessage;
 
         public void ProcessMessage(ScoresRequestMessage message)
         {
@@ -97,6 +102,16 @@ namespace Shared.Data
         public void ProcessMessage(LoggingMessage message)
         {
             this.RaiseEvent(OnLoggingMessage, message);
+        }
+
+        public void ProcessMessage(GameWonMessage message)
+        {
+            this.RaiseEvent(OnGameWonMessage, message);
+        }
+
+        public void ProcessMessage(GameLostMessage message)
+        {
+            this.RaiseEvent(OnGameLostMessage, message);
         }
 
         public void RaiseEvent(EventHandler<MessageEventArgs> eventHandler, Message message)
