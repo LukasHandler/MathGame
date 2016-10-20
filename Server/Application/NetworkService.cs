@@ -31,6 +31,8 @@ namespace Server.Application
 
         private ServerConfiguration Configuration;
 
+        public EventHandler<LoggingEventArgs> OnLoggingMessage;
+
         private object locker;
 
         public NetworkService(ServerConfiguration configuration)
@@ -77,18 +79,17 @@ namespace Server.Application
 
             if (answerMessage.Solution == this.questions[clientGuid].Answer)
             {
-                logMessage += "Right. ";
+                logMessage += "Right. Score: " + (this.clients[clientGuid].Score + 1);
+                this.LogText(logMessage);
                 this.clients[clientGuid].Score++;
             }
             else
             {
-                logMessage += "Wrong. ";
+                logMessage += "Wrong. Score: " + (this.clients[clientGuid].Score - 1);
+                this.LogText(logMessage);
                 this.clients[clientGuid].Score--;
             }
 
-            logMessage += "Score: " + this.clients[clientGuid].Score;
-            this.LogText(logMessage);
-        
             this.CreateQuestion(clientGuid);
         }
 
@@ -97,21 +98,18 @@ namespace Server.Application
             ConnectionRequestMonitorMessage request = (ConnectionRequestMonitorMessage)e.MessageContent;
             LogText(string.Format("Connection request from Monitor ({0}) to {1}", request.SenderId, this.Configuration.ServerName));
 
-            lock (locker)
+            if (this.monitors.Contains(request.SenderId))
             {
-                if (this.monitors.Contains(request.SenderId))
-                {
-                    ConnectionDeniedMessage deniedMessage = new ConnectionDeniedMessage();
-                    monitorManager.WriteData(deniedMessage, request.SenderId);
-                    LogText(string.Format("Connection denied from {0} to Monitor ({1})", this.Configuration.ServerName, request.SenderId));
-                }
-                else
-                {
-                    this.monitors.Add(request.SenderId);
-                    ConnectionAcceptMessage acceptMessage = new ConnectionAcceptMessage();
-                    monitorManager.WriteData(acceptMessage, request.SenderId);
-                    LogText(string.Format("Connection accepted from {0} to Monitor ({1})", this.Configuration.ServerName, request.SenderId));
-                }
+                ConnectionDeniedMessage deniedMessage = new ConnectionDeniedMessage();
+                monitorManager.WriteData(deniedMessage, request.SenderId);
+                LogText(string.Format("Connection denied from {0} to Monitor ({1})", this.Configuration.ServerName, request.SenderId));
+            }
+            else
+            {
+                this.monitors.Add(request.SenderId);
+                ConnectionAcceptMessage acceptMessage = new ConnectionAcceptMessage();
+                monitorManager.WriteData(acceptMessage, request.SenderId);
+                LogText(string.Format("Connection accepted from {0} to Monitor ({1})", this.Configuration.ServerName, request.SenderId));
             }
         }
 
@@ -146,26 +144,23 @@ namespace Server.Application
             ConnectionRequestClientMessage request = (ConnectionRequestClientMessage)e.MessageContent;
             LogText(string.Format("Connection request from {0} to {1}", request.PlayerName, this.Configuration.ServerName));
 
-            lock (locker)
+            if (this.clients.ContainsKey(request.SenderId) || this.clients.Any(p => p.Value.PlayerName == request.PlayerName))
             {
-                if (this.clients.ContainsKey(request.SenderId) || this.clients.Any(p => p.Value.PlayerName == request.PlayerName))
-                {
-                    ConnectionDeniedMessage deniedMessage = new ConnectionDeniedMessage();
-                    clientManager.WriteData(deniedMessage, request.SenderId);
-                    LogText(string.Format("Connection denied from {0} to {1}", this.Configuration.ServerName, request.PlayerName));
-                }
-                else
-                {
-                    var client = new Client(request.PlayerName, this.Configuration.MinScore, this.Configuration.MaxScore);
-                    client.MinScoreReached += ClientLost;
-                    client.MaxScoreReached += ClientWon;
-                    this.clients.Add(request.SenderId, client);
-                    ConnectionAcceptMessage acceptedMessage = new ConnectionAcceptMessage();
-                    clientManager.WriteData(acceptedMessage, request.SenderId);
-                    LogText(string.Format("Connection accepted from {0} to {1}", this.Configuration.ServerName, request.PlayerName));
+                ConnectionDeniedMessage deniedMessage = new ConnectionDeniedMessage();
+                clientManager.WriteData(deniedMessage, request.SenderId);
+                LogText(string.Format("Connection denied from {0} to {1}", this.Configuration.ServerName, request.PlayerName));
+            }
+            else
+            {
+                var client = new Client(request.PlayerName, this.Configuration.MinScore, this.Configuration.MaxScore);
+                client.MinScoreReached += ClientLost;
+                client.MaxScoreReached += ClientWon;
+                this.clients.Add(request.SenderId, client);
+                ConnectionAcceptMessage acceptedMessage = new ConnectionAcceptMessage();
+                clientManager.WriteData(acceptedMessage, request.SenderId);
+                this.LogText(string.Format("Connection accepted from {0} to {1}", this.Configuration.ServerName, request.PlayerName));
 
-                    this.CreateQuestion(request.SenderId);
-                }
+                this.CreateQuestion(request.SenderId);
             }
 
         }
@@ -198,6 +193,18 @@ namespace Server.Application
 
         private void LogText(string loggingText)
         {
+            if (this.OnLoggingMessage != null)
+            {
+                this.OnLoggingMessage(this, new LoggingEventArgs(loggingText));
+            }
+
+            LoggingMessage loggingMessage = new LoggingMessage()
+            {
+                Text = loggingText
+            };
+
+            monitors.ForEach(p => monitorManager.WriteData(loggingMessage, p));
+
             #region reflectionLogging
             //var message = e.MessageContent;
             //Type messageType = message.GetType();
@@ -231,13 +238,6 @@ namespace Server.Application
             //    fullLoggingText += " arguments " + propertyStrings;
             //}
             #endregion
-
-            LoggingMessage loggingMessage = new LoggingMessage()
-            {
-                Text = loggingText
-            };
-
-            monitors.ForEach(p => monitorManager.WriteData(loggingMessage, p));
         }
 
         private void CreateQuestion(Guid clientGuid)
@@ -259,6 +259,9 @@ namespace Server.Application
                     Time = question.Time,
                     Score = this.clients[clientGuid].Score
                 };
+
+                //Take a break so other logging messages can be sent
+                //Thread.Sleep(1);
 
                 this.LogText(string.Format("Question {0} sent from {1} to {2}", questionMessage.QuestionText, this.Configuration.ServerName, this.clients[clientGuid].PlayerName));
                 clientManager.WriteData(questionMessage, clientGuid);

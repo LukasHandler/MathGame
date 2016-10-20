@@ -12,14 +12,7 @@ namespace Shared.Data.Managers
 {
     public class TcpClientManager : IDataManager
     {
-        //private IPEndPoint localEndPoint;
-
         private NetworkStream stream;
-
-        public TcpClientManager()
-        {
-            //this.localEndPoint = localEndPoint;
-        }
 
         public event EventHandler<MessageEventArgs> OnDataReceived;
 
@@ -39,15 +32,20 @@ namespace Shared.Data.Managers
                 callback = delegate (IAsyncResult result)
                 {
                     int bytesRead = stream.EndRead(result);
-                    Message receivedMessage = MessageByteConverter.ConvertToMessage(buffer);
+
+                    //Copy result into new buffer so we can read as soon as possible again - otherwise some messages get lost
+                    byte[] toConvertBuffer = new byte[bytesRead];
+                    Array.Copy(buffer, toConvertBuffer, bytesRead);
+
+                    buffer = new byte[10000];
+                    stream.BeginRead(buffer, 0, buffer.Length, callback, null);
+
+                    Message receivedMessage = MessageByteConverter.ConvertToMessage(toConvertBuffer);
 
                     if (OnDataReceived != null)
                     {
                         OnDataReceived(this, new MessageEventArgs(receivedMessage));
                     }
-
-                    buffer = new byte[10000];
-                    stream.BeginRead(buffer, 0, buffer.Length, callback, null);
                 };
 
                 stream.BeginRead(buffer, 0, buffer.Length, callback, null);

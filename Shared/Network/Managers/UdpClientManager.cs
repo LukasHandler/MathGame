@@ -40,15 +40,16 @@ namespace Shared.Data.Managers
         {
             IPEndPoint hostIp = new IPEndPoint(IPAddress.Any, 0);
             byte[] received = udpStream.EndReceive(data, ref hostIp);
+            byte[] toConvertBuffer = new byte[received.Count()];
+            Array.Copy(received, toConvertBuffer, received.Length);
+            udpStream.BeginReceive(ReceivedData, null);
 
-            Message receivedMessage = MessageByteConverter.ConvertToMessage(received);
+            Message receivedMessage = MessageByteConverter.ConvertToMessage(toConvertBuffer);
 
             if (OnDataReceived != null)
             {
                 OnDataReceived(this, new MessageEventArgs(receivedMessage));
             }
-
-            udpStream.BeginReceive(ReceivedData, null);
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using Server.Application;
+using Shared.Data;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -21,33 +22,41 @@ namespace Server.Presentation
             selectConfigFile.InitialDirectory = AppDomain.CurrentDomain.BaseDirectory;
 
             ServerConfiguration configuration;
+            string jsonText = string.Empty;
 
-            if (selectConfigFile.ShowDialog() == DialogResult.OK)
+            using (StreamReader fileReader = new StreamReader(AppDomain.CurrentDomain.BaseDirectory + "server1.json"))
             {
-                string jsonText = string.Empty;
-
-                using (StreamReader fileReader = new StreamReader(selectConfigFile.FileName))
-                {
-                    jsonText = fileReader.ReadToEnd();
-                }
-
-                configuration = JsonConvert.DeserializeObject<ServerConfiguration>(jsonText);
+                jsonText = fileReader.ReadToEnd();
             }
-            else
-            {
-                Random randomGenerator = new Random();
 
-                configuration = new ServerConfiguration()
-                {
-                    ServerName = "server" + randomGenerator.Next(1, 10),
-                    ClientPort = 4700 + randomGenerator.Next(1, 100),
-                    MonitorPort = 4800 + randomGenerator.Next(1, 100),
-                    ServerPort = 4900 + randomGenerator.Next(1, 100)
-                };
+            configuration = JsonConvert.DeserializeObject < ServerConfiguration>(jsonText);
 
-            }
+            //if (selectConfigFile.ShowDialog() == DialogResult.OK)
+            //{
+            //    string jsonText = string.Empty;
+
+            //    using (StreamReader fileReader = new StreamReader(selectConfigFile.FileName))
+            //    {
+            //        jsonText = fileReader.ReadToEnd();
+            //    }
+
+            //    configuration = JsonConvert.DeserializeObject<ServerConfiguration>(jsonText);
+            //}
+            //else
+            //{
+            //    Random randomGenerator = new Random();
+
+            //    configuration = new ServerConfiguration()
+            //    {
+            //        ServerName = "server" + randomGenerator.Next(1, 10),
+            //        ClientPort = 4700 + randomGenerator.Next(1, 100),
+            //        MonitorPort = 4800 + randomGenerator.Next(1, 100),
+            //        ServerPort = 4900 + randomGenerator.Next(1, 100)
+            //    };
+            //}
 
             NetworkService serverService = new NetworkService(configuration);
+            serverService.OnLoggingMessage += PrintLoggingMessage;
 
             Console.WriteLine("Started server");
             Console.WriteLine("Name: " + configuration.ServerName);
@@ -56,6 +65,11 @@ namespace Server.Presentation
             Console.WriteLine("Server Port: " + configuration.ServerPort);
 
             Console.ReadLine();
+        }
+
+        private static void PrintLoggingMessage(object sender, LoggingEventArgs e)
+        {
+            Console.WriteLine(e.LoggingText);
         }
     }
 }

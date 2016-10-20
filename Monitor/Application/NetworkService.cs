@@ -27,6 +27,7 @@ namespace Monitor.Application
 
         private static bool isConnected = false;
 
+
         static NetworkService()
         {
             messageProcessor = new MessageProcessor();

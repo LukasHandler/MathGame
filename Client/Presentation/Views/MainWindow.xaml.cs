@@ -25,5 +25,11 @@ namespace Client.Presentation.Views
         {
             InitializeComponent();
         }
+
+        private void AnswerFocus(object sender, RoutedEventArgs e)
+        {
+            this.AnswerField.Clear();
+            this.AnswerField.Focus();
+        }
     }
 }

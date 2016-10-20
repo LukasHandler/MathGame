@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 namespace Shared.Data.Managers
 {
     public class TcpServerManager : IDataManager
-    { 
+    {
         private Dictionary<Guid, NetworkStream> streams;
 
         public TcpServerManager(int port)
@@ -42,26 +42,30 @@ namespace Shared.Data.Managers
                     try
                     {
                         int bytesRead = stream.EndRead(result);
+
+                        //Copy result into new buffer so we can read as soon as possible again - otherwise some messages get lost
+                        byte[] toConvertBuffer = new byte[bytesRead];
+                        Array.Copy(buffer, toConvertBuffer, bytesRead);
+
+                        buffer = new byte[10000];
+                        stream.BeginRead(buffer, 0, buffer.Length, callback, null);
+
+                        Message receivedMessage = MessageByteConverter.ConvertToMessage(toConvertBuffer);
+
+                        if (!this.streams.ContainsKey(receivedMessage.SenderId))
+                        {
+                            this.streams.Add(receivedMessage.SenderId, stream);
+                        }
+
+                        if (OnDataReceived != null)
+                        {
+                            OnDataReceived(this, new MessageEventArgs(receivedMessage));
+                        }
                     }
                     catch (System.IO.IOException)
                     {
                         return;
                     }
-
-                    Message receivedMessage = MessageByteConverter.ConvertToMessage(buffer);
-
-                    if (!this.streams.ContainsKey(receivedMessage.SenderId))
-                    {
-                        this.streams.Add(receivedMessage.SenderId, stream);
-                    }
-
-                    if (OnDataReceived != null)
-                    {
-                        OnDataReceived(this, new MessageEventArgs(receivedMessage));
-                    }
-
-                    buffer = new byte[10000];
-                    stream.BeginRead(buffer, 0, buffer.Length, callback, null);
                 };
 
                 stream.BeginRead(buffer, 0, buffer.Length, callback, null);
