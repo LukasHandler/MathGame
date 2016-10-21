@@ -1,5 +1,6 @@
 ﻿using Client.Application;
 using Client.Presentation.Utilities;
+using Shared.Data;
 using Shared.Data.EventArguments;
 using System;
 using System.Collections.Generic;
@@ -31,6 +32,7 @@ namespace Client.Presentation.ViewModels
             this.ServerAddress = IPAddress.Parse("127.0.0.1");
             this.ServerPort = 4701;
             this.Questions = new ObservableCollection<string>();
+            this.Scores = new List<ScoreEntry>();
 
             networkService = new NetworkService();
 
@@ -41,7 +43,7 @@ namespace Client.Presentation.ViewModels
 
             networkService.OnConnectionDenied += delegate (object sender, EventArgs args)
             {
-                MessageBox.Show("Verbindung wurde vom Server nicht akzeptiert.");
+                MessageBox.Show("Server denied the connection.");
                 this.IsConnected = false;
             };
 
@@ -69,6 +71,7 @@ namespace Client.Presentation.ViewModels
                 this.timerThread.Abort();
                 this.Time = 0;
                 MessageBox.Show("Congratulations, you won!");
+                this.IsOver = true;
             };
 
             networkService.OnGameLost += delegate (object sender, GameFinishedEventArgs args)
@@ -77,6 +80,12 @@ namespace Client.Presentation.ViewModels
                 this.timerThread.Abort();
                 this.Time = 0;
                 MessageBox.Show("You lost!");
+                this.IsOver = true;
+            };
+
+            networkService.OnScoresReceived += delegate (object sender, ScoresEventArgs args)
+            {
+                this.Scores = args.Scores;
             };
         }
 
@@ -104,6 +113,8 @@ namespace Client.Presentation.ViewModels
         private int time;
 
         private int score;
+
+        private bool isOver;
 
         public ObservableCollection<string> Questions
         {
@@ -143,6 +154,40 @@ namespace Client.Presentation.ViewModels
         private string question;
 
         private bool isConnected;
+
+        private List<ScoreEntry> scores;
+
+        public List<ScoreEntry> Scores
+        {
+            get
+            {
+                return this.scores;
+            }
+            set
+            {
+                if (this.scores != value)
+                {
+                    this.scores = value;
+                    this.OnPropertyChanged();
+                }
+            }
+        }
+
+        public bool IsOver
+        {
+            get
+            {
+                return this.isOver;
+            }
+            set
+            {
+                if (this.isOver != value)
+                {
+                    this.isOver = value;
+                    this.OnPropertyChanged();
+                }
+            }
+        }
 
         public string PlayerName { get; set; }
 
@@ -257,6 +302,18 @@ namespace Client.Presentation.ViewModels
                         {
                             networkService.Disconnect();
                             this.IsConnected = false;
+                            this.IsOver = false;
+                            if (this.timerThread != null && this.timerThread.IsAlive)
+                            {
+                                this.timerThread.Abort();
+                            }
+
+                            this.Time = 0;
+                            this.Questions = new ObservableCollection<string>();
+                            this.Scores = new List<ScoreEntry>();
+                            this.Answer = 0;
+                            this.Question = string.Empty;
+                            this.OnPropertyChanged("Answer");
                         }
                         catch (Exception exc)
                         {
@@ -287,7 +344,12 @@ namespace Client.Presentation.ViewModels
                         networkService.SubmitAnswer(this.Answer);
                     };
 
-                    this.submitAnswer = new RelayCommand(execute);
+                    Predicate<object> canExecute = delegate (object argument)
+                    {
+                        return !this.IsOver;
+                    };
+
+                    this.submitAnswer = new RelayCommand(execute, canExecute);
                 }
 
                 return this.submitAnswer;
@@ -302,7 +364,7 @@ namespace Client.Presentation.ViewModels
                 {
                     Action<object> execute = delegate (object argument)
                     {
-                        MessageBox.Show("asdf");
+                        networkService.GetScores();
                     };
 
                     this.getScores = new RelayCommand(execute);

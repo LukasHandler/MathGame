@@ -23,6 +23,8 @@ namespace Client.Application
 
         public EventHandler<GameFinishedEventArgs> OnGameLost;
 
+        public EventHandler<ScoresEventArgs> OnScoresReceived;
+
         private UdpClientManager networkManager;
 
         private MessageProcessor messageProcessor;
@@ -80,6 +82,14 @@ namespace Client.Application
                     this.OnGameLost(this, new GameFinishedEventArgs((args.MessageContent as GameLostMessage).Score));
                 }
             };
+
+            messageProcessor.OnScoreResponse += delegate (object sender, MessageEventArgs args)
+            {
+                if (this.OnScoresReceived != null)
+                {
+                    this.OnScoresReceived(this, new ScoresEventArgs(((ScoresResponseMessage)args.MessageContent).Scores));
+                }
+            };
         }
 
         public void Connect(IPEndPoint server, string playerName)
@@ -106,9 +116,14 @@ namespace Client.Application
             Send(answerMessage);
         }
 
-        public List<Tuple<string, int>> GetScores()
+        public void GetScores()
         {
-            return null;
+            ScoresRequestMessage scoresRequest = new ScoresRequestMessage()
+            {
+                SenderId = clientGuid
+            };
+
+            Send(scoresRequest);
         }
 
         private void Send(Message request)

@@ -15,6 +15,8 @@ namespace Shared.Data
 
         public EventHandler<MessageEventArgs> OnScoreRequest;
 
+        public EventHandler<MessageEventArgs> OnScoreResponse;
+
         public EventHandler<MessageEventArgs> OnAnswer;
 
         public EventHandler<MessageEventArgs> OnConnectionDenied;
@@ -76,7 +78,7 @@ namespace Shared.Data
 
         public void ProcessMessage(ScoresResponseMessage message)
         {
-            RaiseEvent(OnScoreRequest, message);
+            RaiseEvent(OnScoreResponse, message);
         }
 
         public void ProcessMessage(ConnectionAcceptMessage message)

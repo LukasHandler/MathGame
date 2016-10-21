@@ -33,18 +33,16 @@ namespace Server.Application
 
         public EventHandler<LoggingEventArgs> OnLoggingMessage;
 
-        private object locker;
-
         public NetworkService(ServerConfiguration configuration)
         {
             this.questions = new Dictionary<Guid, MathQuestion>();
             this.Configuration = configuration;
-            this.locker = new object();
 
             this.messageProcessor = new MessageProcessor();
             this.messageProcessor.OnConnectionRequestClient += ConnectionRequestedClient;
             this.messageProcessor.OnDisconnect += Disconnect;
             this.messageProcessor.OnAnswer += SubmitAnswer;
+            this.messageProcessor.OnScoreRequest += SendScores;
 
             this.messageProcessor.OnConnectionRequestMonitor += ConnectionRequestedMonitor;
 
@@ -61,36 +59,53 @@ namespace Server.Application
             this.monitors = new List<Guid>();
         }
 
+        private void SendScores(object sender, MessageEventArgs e)
+        {
+            ScoresRequestMessage requestMessage = e.MessageContent as ScoresRequestMessage;
+
+            List<ScoreEntry> scores = this.clients.Select(p => new ScoreEntry(p.Value.PlayerName, p.Value.Score)).OrderByDescending(p => p.Score).ToList();
+            ScoresResponseMessage responseMessage = new ScoresResponseMessage()
+            {
+                Scores = scores
+            };
+
+            clientManager.WriteData(responseMessage, requestMessage.SenderId);
+        }
+
         private void SubmitAnswer(object sender, MessageEventArgs e)
         {
             AnswerMessage answerMessage = e.MessageContent as AnswerMessage;
             Guid clientGuid = answerMessage.SenderId;
 
-            string logMessage = string.Format("Answer {0} from {1} to {2}. ", answerMessage.Solution, this.clients[clientGuid].PlayerName, this.Configuration.ServerName);
+            if (this.clients[clientGuid].Score < this.Configuration.MaxScore &&
+                this.clients[clientGuid].Score > this.Configuration.MinScore)
+            {
+                string logMessage = string.Format("Answer {0} from {1} to {2}. ", answerMessage.Solution, this.clients[clientGuid].PlayerName, this.Configuration.ServerName);
 
-            if (this.clientTimers.ContainsKey(clientGuid))
-            {
-                this.clientTimers[clientGuid].Dispose();
-            }
-            else
-            {
-                throw new NotImplementedException();
-            }
+                if (this.clientTimers.ContainsKey(clientGuid))
+                {
+                    this.clientTimers[clientGuid].Dispose();
+                }
+                else
+                {
+                    throw new NotImplementedException();
+                }
 
-            if (answerMessage.Solution == this.questions[clientGuid].Answer)
-            {
-                logMessage += "Right. Score: " + (this.clients[clientGuid].Score + 1);
-                this.LogText(logMessage);
-                this.clients[clientGuid].Score++;
-            }
-            else
-            {
-                logMessage += "Wrong. Score: " + (this.clients[clientGuid].Score - 1);
-                this.LogText(logMessage);
-                this.clients[clientGuid].Score--;
-            }
+                if (answerMessage.Solution == this.questions[clientGuid].Answer)
+                {
+                    logMessage += "Right. Score: " + (this.clients[clientGuid].Score + 1);
+                    this.LogText(logMessage);
+                    this.clients[clientGuid].Score++;
+                }
+                else
+                {
+                    logMessage += "Wrong. Score: " + (this.clients[clientGuid].Score - 1);
+                    this.LogText(logMessage);
+                    this.clients[clientGuid].Score--;
+                }
 
-            this.CreateQuestion(clientGuid);
+                this.CreateQuestion(clientGuid);
+            }
         }
 
         private void ConnectionRequestedMonitor(object sender, MessageEventArgs e)
@@ -195,7 +210,7 @@ namespace Server.Application
         {
             if (this.OnLoggingMessage != null)
             {
-                this.OnLoggingMessage(this, new LoggingEventArgs(loggingText));
+                //this.OnLoggingMessage(this, new LoggingEventArgs(loggingText));
             }
 
             LoggingMessage loggingMessage = new LoggingMessage()
@@ -242,15 +257,15 @@ namespace Server.Application
 
         private void CreateQuestion(Guid clientGuid)
         {
-            if (this.clients[clientGuid].Score != this.Configuration.MaxScore &&
-                this.clients[clientGuid].Score != this.Configuration.MinScore)
+            if (this.clients[clientGuid].Score < this.Configuration.MaxScore &&
+                this.clients[clientGuid].Score > this.Configuration.MinScore)
             {
-                var questionCount = this.Configuration.MathQuestions.Count;
+                var questionCount = QuestionAccessor.MathQuestions.Count;
 
                 Random randomQuestionGenerator = new Random();
                 int questionIndex = randomQuestionGenerator.Next(0, questionCount);
 
-                MathQuestion question = this.Configuration.MathQuestions[questionIndex];
+                MathQuestion question = QuestionAccessor.MathQuestions[questionIndex];
 
                 QuestionMessage questionMessage = new QuestionMessage()
                 {

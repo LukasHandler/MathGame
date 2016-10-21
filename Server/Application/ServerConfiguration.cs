@@ -19,8 +19,5 @@ namespace Server.Application
         public int MaxScore { get; set; }
 
         public int MinScore { get; set; }
-
-        public List<MathQuestion> MathQuestions { get; set; }
-
     }
 }

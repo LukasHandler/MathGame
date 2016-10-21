@@ -29,7 +29,7 @@ namespace Server.Presentation
                 jsonText = fileReader.ReadToEnd();
             }
 
-            configuration = JsonConvert.DeserializeObject < ServerConfiguration>(jsonText);
+            configuration = JsonConvert.DeserializeObject<ServerConfiguration>(jsonText);
 
             //if (selectConfigFile.ShowDialog() == DialogResult.OK)
             //{
