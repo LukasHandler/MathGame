@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 
 namespace Shared.Data.Messages
 {
-    public class RightAnswerMessage : Message
+    [Serializable]
+    public class ConnectionRequestMonitorMessage : Message
     {
         public override void ProcessMessage(IMessageVisitor processor)
         {

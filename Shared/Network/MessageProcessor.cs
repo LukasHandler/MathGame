@@ -11,7 +11,13 @@ namespace Shared.Data
 {
     public class MessageProcessor : IMessageVisitor
     {
-        public EventHandler<MessageEventArgs> OnConnectionRequest;
+        public EventHandler<MessageEventArgs> OnConnectionRequestClient;
+
+        public EventHandler<MessageEventArgs> OnConnectionRequestServer;
+
+        public EventHandler<MessageEventArgs> OnConnectionRequestMonitor;
+
+        public EventHandler<MessageEventArgs> OnConnectionAcceptedServer;
 
         public EventHandler<MessageEventArgs> OnScoreRequest;
 
@@ -23,13 +29,11 @@ namespace Shared.Data
 
         public EventHandler<MessageEventArgs> OnConnectionAccepted;
 
-        public EventHandler<MessageEventArgs> OnWrongAnswer;
-
-        public EventHandler<MessageEventArgs> OnRightAnswer;
-
         public EventHandler<MessageEventArgs> OnQuestion;
 
         public EventHandler<MessageEventArgs> OnDisconnect;
+
+        public EventHandler<MessageEventArgs> OnDisconnectServer;
 
         public EventHandler<MessageEventArgs> OnLoggingMessage;
 
@@ -37,29 +41,34 @@ namespace Shared.Data
 
         public EventHandler<MessageEventArgs> OnGameLostMessage;
 
+        public void ProcessMessage(ConnectionAcceptServerMessage message)
+        {
+            RaiseEvent(this.OnConnectionAcceptedServer, message);
+        }
+
         public void ProcessMessage(ScoresRequestMessage message)
         {
             RaiseEvent(OnScoreRequest, message);
         }
 
-        public void ProcessMessage(ConnectionRequestMessage message)
+        public void ProcessMessage(ConnectionRequestClientMessage message)
         {
-            RaiseEvent(OnConnectionRequest, message);
+            RaiseEvent(OnConnectionRequestClient, message);
+        }
+
+        public void ProcessMessage(ConnectionRequestServerMessage message)
+        {
+            this.RaiseEvent(OnConnectionRequestServer, message);
+        }
+
+        public void ProcessMessage(ConnectionRequestMonitorMessage message)
+        {
+            this.RaiseEvent(OnConnectionRequestMonitor, message);
         }
 
         public void ProcessMessage(AnswerMessage message)
         {
             RaiseEvent(OnAnswer, message);
-        }
-
-        public void ProcessMessage(RightAnswerMessage message)
-        {
-            RaiseEvent(OnRightAnswer, message);
-        }
-
-        public void ProcessMessage(WrongAnswerMessage message)
-        {
-            RaiseEvent(OnWrongAnswer, message);
         }
 
         public void ProcessMessage(ConnectionDeniedMessage message)
@@ -85,6 +94,11 @@ namespace Shared.Data
         public void ProcessMessage(DisconnectMessage message)
         {
             RaiseEvent(this.OnDisconnect, message);
+        }
+
+        public void ProcessMessage(DisconnectServerMessage message)
+        {
+            this.RaiseEvent(this.OnDisconnectServer, message);
         }
 
         public void ProcessMessage(LoggingMessage message)

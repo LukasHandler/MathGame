@@ -23,8 +23,6 @@ namespace Monitor.Application
 
         public static EventHandler<LoggingEventArgs> OnLoggingDataReceived;
 
-        private static Guid monitorGuid = Guid.NewGuid();
-
         private static bool isConnected = false;
 
 
@@ -57,9 +55,9 @@ namespace Monitor.Application
         {
             serverEndPoint = serverPoint;
 
-            ConnectionRequestMessage requestMessage = new ConnectionRequestMessage()
+            ConnectionRequestMonitorMessage requestMessage = new ConnectionRequestMonitorMessage()
             {
-                SenderId = monitorGuid
+
             };
 
             clientManager.WriteData(requestMessage, serverEndPoint);
@@ -71,7 +69,7 @@ namespace Monitor.Application
             {
                 DisconnectMessage disconnectMessage = new DisconnectMessage()
                 {
-                    SenderId = monitorGuid
+
                 };
 
                 clientManager.WriteData(disconnectMessage, serverEndPoint);

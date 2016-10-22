@@ -15,152 +15,239 @@ namespace Server.Application
 {
     public class NetworkService
     {
+        private bool isActive;
+
+        private DateTime startTime;
+
         private IDataManager clientDataManager;
 
-        private Dictionary<Guid, Client> clients;
+        private Dictionary<Client, object> clientsTargetInformation;
 
-        private Dictionary<Guid, Timer> clientTimers;
+        private Dictionary<Client, Timer> clientTimers;
 
-        private Dictionary<Guid, MathQuestion> questions;
+        private Dictionary<Client, MathQuestion> questions;
 
         private IDataManager monitorDataManager;
-        
+
         private IDataManager serverDataManager;
 
-        private List<Guid> monitors;
-
-        //private MessageProcessor messageProcessorClients;
-
-        //private MessageProcessor messageProcessorMonitors;
-
-        //private MessageProcessor messageProcessorServers;
+        private List<object> monitorsTargetInformation;
 
         private ServerConfiguration Configuration;
 
         public EventHandler<LoggingEventArgs> OnLoggingMessage;
 
+        private MessageProcessor messageProcessor;
+
+        private object serverTargetInformation;
+
         public NetworkService(ServerConfiguration configuration)
         {
-            this.questions = new Dictionary<Guid, MathQuestion>();
+            this.startTime = DateTime.Now;
+            this.isActive = true;
+            this.questions = new Dictionary<Client, MathQuestion>();
             this.Configuration = configuration;
 
-            MessageProcessor messageProcessorClients = new MessageProcessor();
-            messageProcessorClients.OnConnectionRequest += ConnectionRequestedClient;
-            messageProcessorClients.OnDisconnect += Disconnect;
-            messageProcessorClients.OnAnswer += SubmitAnswer;
-            messageProcessorClients.OnScoreRequest += SendScores;
+            messageProcessor = new MessageProcessor();
+            messageProcessor.OnConnectionRequestClient += ConnectionRequestedClient;
+            messageProcessor.OnDisconnect += Disconnect;
+            messageProcessor.OnAnswer += SubmitAnswer;
+            messageProcessor.OnScoreRequest += SendScores;
 
             clientDataManager = new UdpServerManager(this.Configuration.ClientPort);
-            clientDataManager.OnDataReceived += messageProcessorClients.DataReceived;
+            clientDataManager.OnDataReceived += OnClientDataReceived;
 
-            MessageProcessor messageProcessorMonitors = new MessageProcessor();
-            messageProcessorMonitors.OnConnectionRequest += ConnectionRequestedMonitor;
+            messageProcessor.OnConnectionRequestMonitor += ConnectionRequestedMonitor;
             monitorDataManager = new TcpServerManager(this.Configuration.MonitorPort);
-            monitorDataManager.OnDataReceived += messageProcessorMonitors.DataReceived;
-            monitors = new List<Guid>();
+            monitorDataManager.OnDataReceived += messageProcessor.DataReceived;
+            monitorsTargetInformation = new List<object>();
 
-            clientTimers = new Dictionary<Guid, Timer>();
-            this.clients = new Dictionary<Guid, Client>();
+            clientTimers = new Dictionary<Client, Timer>();
+            this.clientsTargetInformation = new Dictionary<Client, object>();
 
-            MessageProcessor messageProcessorServers = new MessageProcessor();
-            this.serverDataManager = new TcpServerManager(configuration.ServerPort);
-            this.serverDataManager.OnDataReceived += messageProcessorServers.DataReceived;
-            messageProcessorServers.OnConnectionRequest += ConnectionRequestServer;
+            this.serverDataManager = new TcpClientServerManager(configuration.ServerPort);
+            this.serverDataManager.OnDataReceived += ServerMessageReceived;
+            messageProcessor.OnConnectionRequestServer += ConnectionRequestServer;
+            messageProcessor.OnConnectionAcceptedServer += ConnectionAcceptedServer;
+            messageProcessor.OnDisconnectServer += DisconnectServer;
+        }
+
+        private void OnClientDataReceived(object sender, MessageEventArgs e)
+        {
+            if (this.isActive)
+            {
+                messageProcessor.DataReceived(sender, e);
+            }
+            else
+            {
+                this.serverDataManager.WriteData(e.MessageContent, this.serverTargetInformation);
+            }
+        }
+
+        private void DisconnectServer(object sender, MessageEventArgs e)
+        {
+            this.isActive = true;
+            this.serverTargetInformation = null;
+        }
+
+        private void ConnectionAcceptedServer(object sender, MessageEventArgs e)
+        {
+            ConnectionAcceptServerMessage serverReponse = (ConnectionAcceptServerMessage)e.MessageContent;
+            this.isActive = serverReponse.IsTargetActive;
+        }
+
+        private void ServerMessageReceived(object sender, MessageEventArgs e)
+        {
+            if (this.isActive)
+            {
+                this.messageProcessor.DataReceived(this, e);
+            }
+            else
+            {
+                this.serverDataManager.WriteData(e.MessageContent, serverTargetInformation);
+            }
+        }
+
+        public void ConnectToServer(object server)
+        {
+            this.serverTargetInformation = server;
+
+            ConnectionRequestServerMessage connectionRequest = new ConnectionRequestServerMessage()
+            {
+                SenderStartTime = this.startTime
+            };
+
+            this.serverDataManager.WriteData(connectionRequest, server);
+        }
+
+        public void DisconnectFromServer()
+        {
+            DisconnectServerMessage disconnect = new DisconnectServerMessage();
+            this.serverDataManager.WriteData(disconnect, this.serverTargetInformation);
         }
 
         private void ConnectionRequestServer(object sender, MessageEventArgs e)
         {
-            throw new NotImplementedException();
+            ConnectionRequestServerMessage request = (ConnectionRequestServerMessage)e.MessageContent;
+
+            if (request.SenderStartTime == this.startTime)
+            {
+                Random randomServerSelector = new Random();
+                int next = randomServerSelector.Next(0, 2);
+                this.isActive = next == 0 ? true : false;
+            }
+            else
+            {
+                if (request.SenderStartTime > this.startTime)
+                {
+                    this.isActive = true;
+                }
+                else
+                {
+                    this.isActive = false;
+
+                }
+            }
+
+            ConnectionAcceptServerMessage response = new ConnectionAcceptServerMessage()
+            {
+                IsTargetActive = !this.isActive
+            };
+
+            this.serverTargetInformation = request.SenderInformation;
+            this.serverDataManager.WriteData(response, this.serverTargetInformation);
         }
 
         private void SendScores(object sender, MessageEventArgs e)
         {
             ScoresRequestMessage requestMessage = e.MessageContent as ScoresRequestMessage;
 
-            List<ScoreEntry> scores = this.clients.Select(p => new ScoreEntry(p.Value.PlayerName, p.Value.Score)).OrderByDescending(p => p.Score).ToList();
+            List<ScoreEntry> scores = this.clientsTargetInformation.Select(p => new ScoreEntry(p.Key.PlayerName, p.Key.Score)).OrderByDescending(p => p.Score).ToList();
             ScoresResponseMessage responseMessage = new ScoresResponseMessage()
             {
                 Scores = scores
             };
 
-            clientDataManager.WriteData(responseMessage, requestMessage.SenderId);
+            clientDataManager.WriteData(responseMessage, requestMessage.SenderInformation);
         }
 
         private void SubmitAnswer(object sender, MessageEventArgs e)
         {
             AnswerMessage answerMessage = e.MessageContent as AnswerMessage;
-            Guid clientGuid = answerMessage.SenderId;
+            IPEndPoint clientAdress = (IPEndPoint)answerMessage.SenderInformation;
+            var client = this.clientsTargetInformation.First(p => p.Value.Equals(clientAdress)).Key;
 
-            if (this.clients[clientGuid].Score < this.Configuration.MaxScore &&
-                this.clients[clientGuid].Score > this.Configuration.MinScore)
+            if (client.Score < this.Configuration.MaxScore &&
+                client.Score > this.Configuration.MinScore)
             {
-                string logMessage = string.Format("Answer {0} from {1} to {2}. ", answerMessage.Solution, this.clients[clientGuid].PlayerName, this.Configuration.ServerName);
+                string logMessage = string.Format("Answer {0} from {1} to {2}. ", answerMessage.Solution, client.PlayerName, this.Configuration.ServerName);
 
-                if (this.clientTimers.ContainsKey(clientGuid))
+                if (this.clientTimers.ContainsKey(client))
                 {
-                    this.clientTimers[clientGuid].Dispose();
+                    this.clientTimers[client].Dispose();
                 }
                 else
                 {
                     throw new NotImplementedException();
                 }
 
-                if (answerMessage.Solution == this.questions[clientGuid].Answer)
+                if (answerMessage.Solution == this.questions[client].Answer)
                 {
-                    logMessage += "Right. Score: " + (this.clients[clientGuid].Score + 1);
+                    logMessage += "Right. Score: " + (client.Score + 1);
                     this.LogText(logMessage);
-                    this.clients[clientGuid].Score++;
+                    client.Score++;
                 }
                 else
                 {
-                    logMessage += "Wrong. Score: " + (this.clients[clientGuid].Score - 1);
+                    logMessage += "Wrong. Score: " + (client.Score - 1);
                     this.LogText(logMessage);
-                    this.clients[clientGuid].Score--;
+                    client.Score--;
                 }
 
-                this.CreateQuestion(clientGuid);
+                this.CreateQuestion(client);
             }
         }
 
         private void ConnectionRequestedMonitor(object sender, MessageEventArgs e)
         {
-            ConnectionRequestMessage request = (ConnectionRequestMessage)e.MessageContent;
-            LogText(string.Format("Connection request from Monitor ({0}) to {1}", request.SenderId, this.Configuration.ServerName));
+            ConnectionRequestMonitorMessage request = (ConnectionRequestMonitorMessage)e.MessageContent;
+            LogText(string.Format("Connection request from Monitor ({0}) to {1}", request.SenderInformation, this.Configuration.ServerName));
 
-            if (this.monitors.Contains(request.SenderId))
+            if (this.monitorsTargetInformation.Contains(request.SenderInformation))
             {
                 ConnectionDeniedMessage deniedMessage = new ConnectionDeniedMessage();
-                monitorDataManager.WriteData(deniedMessage, request.SenderId);
-                LogText(string.Format("Connection denied from {0} to Monitor ({1})", this.Configuration.ServerName, request.SenderId));
+                monitorDataManager.WriteData(deniedMessage, request.SenderInformation);
+                LogText(string.Format("Connection denied from {0} to Monitor ({1})", this.Configuration.ServerName, request.SenderInformation));
             }
             else
             {
-                this.monitors.Add(request.SenderId);
+                this.monitorsTargetInformation.Add(request.SenderInformation);
                 ConnectionAcceptMessage acceptMessage = new ConnectionAcceptMessage();
-                monitorDataManager.WriteData(acceptMessage, request.SenderId);
-                LogText(string.Format("Connection accepted from {0} to Monitor ({1})", this.Configuration.ServerName, request.SenderId));
+                monitorDataManager.WriteData(acceptMessage, request.SenderInformation);
+                LogText(string.Format("Connection accepted from {0} to Monitor ({1})", this.Configuration.ServerName, request.SenderInformation));
             }
         }
 
         private void Disconnect(object sender, MessageEventArgs e)
         {
             DisconnectMessage disconnectMessage = (DisconnectMessage)e.MessageContent;
+            Client client = this.GetClientFromMessage(disconnectMessage);
 
-            if (this.clients.ContainsKey(disconnectMessage.SenderId))
+            if (this.clientsTargetInformation.ContainsKey(client))
             {
-                if (this.clientTimers.ContainsKey(disconnectMessage.SenderId))
+                if (this.clientTimers.ContainsKey(client))
                 {
-                    this.clientTimers[disconnectMessage.SenderId].Dispose();
-                    this.clientTimers.Remove(disconnectMessage.SenderId);
+                    this.clientTimers[client].Dispose();
+                    this.clientTimers.Remove(client);
                 }
 
-                LogText(string.Format("{0} disconnected from {1}", this.clients[disconnectMessage.SenderId].PlayerName, this.Configuration.ServerName));
-                this.clients.Remove(disconnectMessage.SenderId);
+                LogText(string.Format("{0} disconnected from {1}", client.PlayerName, this.Configuration.ServerName));
+                this.clientsTargetInformation.Remove(client);
             }
-            else if (this.monitors.Contains(disconnectMessage.SenderId))
+            else if (this.monitorsTargetInformation.Contains(disconnectMessage.SenderInformation))
             {
-                LogText(string.Format("Monitor ({0}) disconnected from {1}", disconnectMessage.SenderId, this.Configuration.ServerName));
-                this.monitors.Remove(disconnectMessage.SenderId);
+                LogText(string.Format("Monitor ({0}) disconnected from {1}", disconnectMessage.SenderInformation, this.Configuration.ServerName));
+                this.monitorsTargetInformation.Remove(disconnectMessage.SenderInformation);
             }
             else
             {
@@ -170,26 +257,27 @@ namespace Server.Application
 
         private void ConnectionRequestedClient(object sender, MessageEventArgs e)
         {
-            ConnectionRequestMessage request = (ConnectionRequestMessage)e.MessageContent;
+            ConnectionRequestClientMessage request = (ConnectionRequestClientMessage)e.MessageContent;
             LogText(string.Format("Connection request from {0} to {1}", request.PlayerName, this.Configuration.ServerName));
+            var client = this.GetClientFromMessage(request);
 
-            if (this.clients.ContainsKey(request.SenderId) || this.clients.Any(p => p.Value.PlayerName == request.PlayerName))
+            if (client != null || this.clientsTargetInformation.Any(p => p.Key.PlayerName == request.PlayerName))
             {
                 ConnectionDeniedMessage deniedMessage = new ConnectionDeniedMessage();
-                clientDataManager.WriteData(deniedMessage, request.SenderId);
+                clientDataManager.WriteData(deniedMessage, request.SenderInformation);
                 LogText(string.Format("Connection denied from {0} to {1}", this.Configuration.ServerName, request.PlayerName));
             }
             else
             {
-                var client = new Client(request.PlayerName, this.Configuration.MinScore, this.Configuration.MaxScore);
+                client = new Client(request.PlayerName, this.Configuration.MinScore, this.Configuration.MaxScore);
                 client.MinScoreReached += ClientLost;
                 client.MaxScoreReached += ClientWon;
-                this.clients.Add(request.SenderId, client);
+                this.clientsTargetInformation.Add(client, request.SenderInformation);
                 ConnectionAcceptMessage acceptedMessage = new ConnectionAcceptMessage();
-                clientDataManager.WriteData(acceptedMessage, request.SenderId);
+                clientDataManager.WriteData(acceptedMessage, request.SenderInformation);
                 this.LogText(string.Format("Connection accepted from {0} to {1}", this.Configuration.ServerName, request.PlayerName));
 
-                this.CreateQuestion(request.SenderId);
+                this.CreateQuestion(client);
             }
 
         }
@@ -197,27 +285,26 @@ namespace Server.Application
         private void ClientWon(object sender, EventArgs e)
         {
             var client = sender as Client;
-            var clientGuid = this.clients.First(p => p.Value == client).Key;
+
             GameWonMessage wonMessage = new GameWonMessage()
             {
                 Score = client.Score
             };
 
-            this.clientDataManager.WriteData(wonMessage, clientGuid);
-            this.LogText(string.Format("{0} won.", this.clients[clientGuid].PlayerName));
+            this.clientDataManager.WriteData(wonMessage, this.clientsTargetInformation[client]);
+            this.LogText(string.Format("{0} won.", client.PlayerName));
         }
 
         private void ClientLost(object sender, EventArgs e)
         {
             var client = sender as Client;
-            var clientGuid = this.clients.First(p => p.Value == client).Key;
             GameLostMessage lostMessage = new GameLostMessage()
             {
                 Score = client.Score
             };
 
-            this.clientDataManager.WriteData(lostMessage, clientGuid);
-            this.LogText(string.Format("{0} lost.", this.clients[clientGuid].PlayerName));
+            this.clientDataManager.WriteData(lostMessage, this.clientsTargetInformation[client]);
+            this.LogText(string.Format("{0} lost.", client.PlayerName));
         }
 
         private void LogText(string loggingText)
@@ -232,7 +319,7 @@ namespace Server.Application
                 Text = loggingText
             };
 
-            monitors.ForEach(p => monitorDataManager.WriteData(loggingMessage, p));
+            monitorsTargetInformation.ForEach(p => monitorDataManager.WriteData(loggingMessage, p));
 
             #region reflectionLogging
             //var message = e.MessageContent;
@@ -269,10 +356,10 @@ namespace Server.Application
             #endregion
         }
 
-        private void CreateQuestion(Guid clientGuid)
+        private void CreateQuestion(Client client)
         {
-            if (this.clients[clientGuid].Score < this.Configuration.MaxScore &&
-                this.clients[clientGuid].Score > this.Configuration.MinScore)
+            if (client.Score < this.Configuration.MaxScore &&
+                client.Score > this.Configuration.MinScore)
             {
                 var questionCount = QuestionAccessor.MathQuestions.Count;
 
@@ -286,26 +373,28 @@ namespace Server.Application
                     QuestionID = question.ID,
                     QuestionText = question.Question,
                     Time = question.Time,
-                    Score = this.clients[clientGuid].Score
+                    Score = client.Score
                 };
 
-                //Take a break so other logging messages can be sent
-                //Thread.Sleep(1);
+                this.LogText(string.Format("Question {0} sent from {1} to {2}", questionMessage.QuestionText, this.Configuration.ServerName, client.PlayerName));
+                clientDataManager.WriteData(questionMessage, this.clientsTargetInformation[client]);
 
-                this.LogText(string.Format("Question {0} sent from {1} to {2}", questionMessage.QuestionText, this.Configuration.ServerName, this.clients[clientGuid].PlayerName));
-                clientDataManager.WriteData(questionMessage, clientGuid);
-
-                this.questions[clientGuid] = question;
-                this.clientTimers[clientGuid] = new Timer(this.QuestionTimeExpired, clientGuid, question.Time * 1000, Timeout.Infinite);
+                this.questions[client] = question;
+                this.clientTimers[client] = new Timer(this.QuestionTimeExpired, client, question.Time * 1000, Timeout.Infinite);
             }
         }
 
         private void QuestionTimeExpired(object state)
         {
-            Guid clientGuid = (Guid)state;
-            this.LogText(string.Format("{0} expired the question answer time. Score: {1}", this.clients[clientGuid].PlayerName, this.clients[clientGuid].Score - 1));
-            this.clients[clientGuid].Score--;
-            this.CreateQuestion(clientGuid);
+            Client client = (Client)state;
+            this.LogText(string.Format("{0} expired the question answer time. Score: {1}", client.PlayerName, client.Score - 1));
+            client.Score--;
+            this.CreateQuestion(client);
+        }
+
+        private Client GetClientFromMessage(Message message)
+        {
+            return this.clientsTargetInformation.FirstOrDefault(p => p.Value.Equals(message.SenderInformation)).Key;
         }
     }
 }

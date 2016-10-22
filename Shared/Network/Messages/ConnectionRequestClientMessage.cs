@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace Shared.Data.Messages
 {
     [Serializable]
-    public class ConnectionRequestMessage : Message
+    public class ConnectionRequestClientMessage : Message
     {
         public string PlayerName { get; set; }
 

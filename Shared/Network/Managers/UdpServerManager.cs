@@ -17,7 +17,6 @@ namespace Shared.Data.Managers
     {
         private UdpClient receiveClient;
         private UdpClient sendClient;
-        private Dictionary<Guid, IPEndPoint> ipAdresses;
 
         public UdpServerManager(int port)
         {
@@ -29,7 +28,6 @@ namespace Shared.Data.Managers
             receiveClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
             receiveClient.Client.Bind(localEndPoint);
 
-            this.ipAdresses = new Dictionary<Guid, IPEndPoint>();
             receiveClient.BeginReceive(ReceivedData, null);
 
             sendClient = new UdpClient();
@@ -45,11 +43,6 @@ namespace Shared.Data.Managers
             receiveClient.BeginReceive(ReceivedData, null);
 
             Message receivedMessage = MessageByteConverter.ConvertToMessage(received);
-            
-            if (!this.ipAdresses.ContainsKey(receivedMessage.SenderId))
-            {
-                this.ipAdresses.Add(receivedMessage.SenderId, senderIp);
-            }
 
             if (OnDataReceived != null)
             {
@@ -61,7 +54,13 @@ namespace Shared.Data.Managers
 
         public void WriteData(Message data, object target)
         {
-            var targetEndpoint = this.ipAdresses[(Guid)target];
+            var targetEndpoint = (IPEndPoint)target;
+
+            if (data.SenderInformation == null)
+            {
+                data.SenderInformation = receiveClient.Client.LocalEndPoint;
+            }
+
             byte[] bytes = MessageByteConverter.ConvertToBytes(data);
             sendClient.Connect(targetEndpoint);
             sendClient.Send(bytes, bytes.Length);

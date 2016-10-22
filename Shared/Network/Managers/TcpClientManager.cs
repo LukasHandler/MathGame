@@ -14,6 +14,8 @@ namespace Shared.Data.Managers
     {
         private NetworkStream stream;
 
+        private TcpClient client;
+
         public event EventHandler<MessageEventArgs> OnDataReceived;
 
         public void WriteData(Message data, object target)
@@ -21,8 +23,15 @@ namespace Shared.Data.Managers
             if (stream == null)
             {
                 //TcpClient client = new TcpClient(localEndPoint);
-                TcpClient client = new TcpClient();
-                client.Connect((IPEndPoint)target);
+                client = new TcpClient();
+                try
+                {
+                    client.Connect((IPEndPoint)target);
+                }
+                catch (Exception)
+                {
+                    return;
+                }
 
                 stream = client.GetStream();
 
@@ -49,6 +58,11 @@ namespace Shared.Data.Managers
                 };
 
                 stream.BeginRead(buffer, 0, buffer.Length, callback, null);
+            }
+
+            if (data.SenderInformation == null)
+            {
+                data.SenderInformation = client.Client.LocalEndPoint;
             }
 
             byte[] bytes = MessageByteConverter.ConvertToBytes(data);

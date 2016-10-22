@@ -31,6 +31,11 @@ namespace Shared.Data.Managers
                 udpStream.BeginReceive(ReceivedData, null);
             }
 
+            if (data.SenderInformation == null)
+            {
+                data.SenderInformation = (IPEndPoint)udpStream.Client.LocalEndPoint;
+            }
+
             byte[] bytes = MessageByteConverter.ConvertToBytes(data);
             udpStream.Send(bytes, bytes.Length);
         }

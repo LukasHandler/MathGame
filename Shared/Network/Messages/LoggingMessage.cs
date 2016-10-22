@@ -7,8 +7,9 @@ using System.Threading.Tasks;
 namespace Shared.Data.Messages
 {
     [Serializable]
-    public class WrongAnswerMessage : Message
+    public class LoggingMessage : Message
     {
+        public string Text { get; set; }
         public override void ProcessMessage(IMessageVisitor processor)
         {
             processor.ProcessMessage(this);

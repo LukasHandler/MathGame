@@ -33,8 +33,6 @@ namespace Client.Application
 
         private IPEndPoint serverEndPoint;
 
-        private Guid clientGuid = Guid.NewGuid();
-
         public NetworkService()
         {
             messageProcessor = new MessageProcessor();
@@ -96,9 +94,8 @@ namespace Client.Application
         {
             serverEndPoint = server;
 
-            ConnectionRequestMessage request = new ConnectionRequestMessage()
+            ConnectionRequestClientMessage request = new ConnectionRequestClientMessage()
             {
-                SenderId = clientGuid,
                 PlayerName = playerName
             };
 
@@ -109,7 +106,6 @@ namespace Client.Application
         {
             AnswerMessage answerMessage = new AnswerMessage()
             {
-                SenderId = clientGuid,
                 Solution = answer
             };
 
@@ -120,7 +116,6 @@ namespace Client.Application
         {
             ScoresRequestMessage scoresRequest = new ScoresRequestMessage()
             {
-                SenderId = clientGuid
             };
 
             Send(scoresRequest);
@@ -135,7 +130,6 @@ namespace Client.Application
         {
             DisconnectMessage disconnectMessage = new DisconnectMessage()
             {
-                SenderId = clientGuid
             };
 
             Send(disconnectMessage);

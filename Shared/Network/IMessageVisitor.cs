@@ -11,15 +11,17 @@ namespace Shared.Data
     {
         void ProcessMessage(AnswerMessage message);
 
-        void ProcessMessage(WrongAnswerMessage message);
-
-        void ProcessMessage(RightAnswerMessage message);
+        void ProcessMessage(DisconnectServerMessage message);
 
         void ProcessMessage(ConnectionAcceptMessage message);
-
+        void ProcessMessage(ConnectionAcceptServerMessage connectionAcceptServerMessage);
         void ProcessMessage(ConnectionDeniedMessage message);
 
-        void ProcessMessage(ConnectionRequestMessage message);
+        void ProcessMessage(ConnectionRequestClientMessage message);
+
+        void ProcessMessage(ConnectionRequestServerMessage message);
+
+        void ProcessMessage(ConnectionRequestMonitorMessage message);
 
         void ProcessMessage(ScoresRequestMessage message);
 

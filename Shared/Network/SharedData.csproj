@@ -44,6 +44,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ConsoleInput.cs" />
     <Compile Include="EventArguments\GameFinishedEventArgs.cs" />
     <Compile Include="EventArguments\QuestionEventArgs.cs" />
     <Compile Include="EventArguments\ScoresEventArgs.cs" />
@@ -51,6 +52,7 @@
     <Compile Include="IMessageVisitor.cs" />
     <Compile Include="LoggingEventArgs.cs" />
     <Compile Include="Managers\TcpClientManager.cs" />
+    <Compile Include="Managers\TcpClientServerManager.cs" />
     <Compile Include="Managers\TcpServerManager.cs" />
     <Compile Include="Managers\UdpServerManager.cs" />
     <Compile Include="Managers\UdpClientManager.cs" />
@@ -59,16 +61,17 @@
     <Compile Include="EventArguments\MessageEventArgs.cs" />
     <Compile Include="MessageProcessor.cs" />
     <Compile Include="Messages\AnswerMessage.cs" />
-    <Compile Include="Messages\AnswerAcceptedMessage.cs" />
+    <Compile Include="Messages\ConnectionAcceptServerMessage.cs" />
+    <Compile Include="Messages\ConnectionRequestMonitorMessage.cs" />
+    <Compile Include="Messages\ConnectionRequestServerMessage.cs" />
     <Compile Include="Messages\DisconnectMessage.cs" />
+    <Compile Include="Messages\DisconnectServerMessage.cs" />
     <Compile Include="Messages\GameLostMessage.cs" />
     <Compile Include="Messages\GameWonMessage.cs" />
     <Compile Include="Messages\LoggingMessage.cs" />
-    <Compile Include="Messages\RightAnswerMessage.cs" />
-    <Compile Include="Messages\WrongAnswerMessage.cs" />
     <Compile Include="Messages\ConnectionAcceptMessage.cs" />
     <Compile Include="Messages\ConnectionDeniedMessage.cs" />
-    <Compile Include="Messages\ConnectionRequestMessage.cs" />
+    <Compile Include="Messages\ConnectionRequestClientMessage.cs" />
     <Compile Include="Messages\ScoresRequestMessage.cs" />
     <Compile Include="Messages\ScoresResponseMessage.cs" />
     <Compile Include="Messages\Message.cs" />

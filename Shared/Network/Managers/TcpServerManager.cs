@@ -12,24 +12,35 @@ namespace Shared.Data.Managers
 {
     public class TcpServerManager : IDataManager
     {
-        private Dictionary<Guid, NetworkStream> streams;
+        private Dictionary<IPEndPoint, NetworkStream> streams;
+
+        private TcpListener tcpListener;
+
+        //private TcpClient tcpClient;
+
+        private IPEndPoint localEndPoint;
+
+        private void Init()
+        {
+            this.streams = new Dictionary<IPEndPoint, NetworkStream>();
+
+            tcpListener = new TcpListener(localEndPoint);
+
+            tcpListener.Start();
+            AcceptClients();
+        }
 
         public TcpServerManager(int port)
         {
-            this.streams = new Dictionary<Guid, NetworkStream>();
-
-            IPEndPoint localEndPoint = new IPEndPoint(IPAddress.Any, port);
-            TcpListener listener = new TcpListener(localEndPoint);
-            listener.Start();
-
-            AcceptClients(listener);
+            this.localEndPoint = new IPEndPoint(IPAddress.Any, port);
+            Init();
         }
 
-        private async void AcceptClients(TcpListener listener)
+        private async void AcceptClients()
         {
             while (true)
             {
-                var client = await listener.AcceptTcpClientAsync();
+                var client = await tcpListener.AcceptTcpClientAsync();
                 NetworkStream stream = client.GetStream();
 
                 IPEndPoint clientEndPoint = ((IPEndPoint)client.Client.RemoteEndPoint);
@@ -52,9 +63,9 @@ namespace Shared.Data.Managers
 
                         Message receivedMessage = MessageByteConverter.ConvertToMessage(toConvertBuffer);
 
-                        if (!this.streams.ContainsKey(receivedMessage.SenderId))
+                        if (!this.streams.Any(p => p.Key.Equals(receivedMessage.SenderInformation)))
                         {
-                            this.streams.Add(receivedMessage.SenderId, stream);
+                            this.streams.Add((IPEndPoint)receivedMessage.SenderInformation, stream);
                         }
 
                         if (OnDataReceived != null)
@@ -76,8 +87,37 @@ namespace Shared.Data.Managers
 
         public void WriteData(Message data, object target)
         {
+            var targetEndPoint = (IPEndPoint)target;
+
+            if (data.SenderInformation == null)
+            {
+                //Returns 0.0.0.0 -> so the ip's it listens to.
+                data.SenderInformation = tcpListener.LocalEndpoint;
+            }
+
             byte[] bytes = MessageByteConverter.ConvertToBytes(data);
-            this.streams[(Guid)target].Write(bytes, 0, bytes.Length);
+
+            //if (this.streams.Count == 0)
+            //{
+            //    if (this.tcpClient == null)
+            //    {
+            //        tcpListener.Stop();
+            //        tcpClient = new TcpClient(this.localEndPoint);
+            //        tcpClient.Connect(targetEndPoint);
+            //    }
+
+            //    tcpClient.GetStream().Write(bytes, 0, bytes.Length);
+
+            //    if (data is Disco)
+            //}
+            //else
+            //{
+
+            if (this.streams.ContainsKey(targetEndPoint))
+            {
+                this.streams[targetEndPoint].Write(bytes, 0, bytes.Length);
+            }
+            //}
         }
     }
 }

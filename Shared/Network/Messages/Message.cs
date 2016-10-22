@@ -10,7 +10,7 @@ namespace Shared.Data.Messages
     [Serializable]
     public abstract class Message
     {
-        public Guid SenderId { get; set; }
+        public object SenderInformation { get; set; }
         
         public abstract void ProcessMessage(IMessageVisitor processor);
     }
