@@ -15,7 +15,7 @@ namespace Server.Application
 {
     public class NetworkService
     {
-        private IDataManager clientManager;
+        private IDataManager clientDataManager;
 
         private Dictionary<Guid, Client> clients;
 
@@ -23,11 +23,17 @@ namespace Server.Application
 
         private Dictionary<Guid, MathQuestion> questions;
 
-        private IDataManager monitorManager;
+        private IDataManager monitorDataManager;
+        
+        private IDataManager serverDataManager;
 
         private List<Guid> monitors;
 
-        private MessageProcessor messageProcessor;
+        //private MessageProcessor messageProcessorClients;
+
+        //private MessageProcessor messageProcessorMonitors;
+
+        //private MessageProcessor messageProcessorServers;
 
         private ServerConfiguration Configuration;
 
@@ -38,25 +44,33 @@ namespace Server.Application
             this.questions = new Dictionary<Guid, MathQuestion>();
             this.Configuration = configuration;
 
-            this.messageProcessor = new MessageProcessor();
-            this.messageProcessor.OnConnectionRequestClient += ConnectionRequestedClient;
-            this.messageProcessor.OnDisconnect += Disconnect;
-            this.messageProcessor.OnAnswer += SubmitAnswer;
-            this.messageProcessor.OnScoreRequest += SendScores;
+            MessageProcessor messageProcessorClients = new MessageProcessor();
+            messageProcessorClients.OnConnectionRequest += ConnectionRequestedClient;
+            messageProcessorClients.OnDisconnect += Disconnect;
+            messageProcessorClients.OnAnswer += SubmitAnswer;
+            messageProcessorClients.OnScoreRequest += SendScores;
 
-            this.messageProcessor.OnConnectionRequestMonitor += ConnectionRequestedMonitor;
+            clientDataManager = new UdpServerManager(this.Configuration.ClientPort);
+            clientDataManager.OnDataReceived += messageProcessorClients.DataReceived;
 
-            clientManager = new UdpServerManager(this.Configuration.ClientPort);
-            clientManager.OnDataReceived += messageProcessor.DataReceived;
+            MessageProcessor messageProcessorMonitors = new MessageProcessor();
+            messageProcessorMonitors.OnConnectionRequest += ConnectionRequestedMonitor;
+            monitorDataManager = new TcpServerManager(this.Configuration.MonitorPort);
+            monitorDataManager.OnDataReceived += messageProcessorMonitors.DataReceived;
+            monitors = new List<Guid>();
 
             clientTimers = new Dictionary<Guid, Timer>();
-
             this.clients = new Dictionary<Guid, Client>();
 
-            this.monitorManager = new TcpServerManager(this.Configuration.MonitorPort);
-            this.monitorManager.OnDataReceived += messageProcessor.DataReceived;
+            MessageProcessor messageProcessorServers = new MessageProcessor();
+            this.serverDataManager = new TcpServerManager(configuration.ServerPort);
+            this.serverDataManager.OnDataReceived += messageProcessorServers.DataReceived;
+            messageProcessorServers.OnConnectionRequest += ConnectionRequestServer;
+        }
 
-            this.monitors = new List<Guid>();
+        private void ConnectionRequestServer(object sender, MessageEventArgs e)
+        {
+            throw new NotImplementedException();
         }
 
         private void SendScores(object sender, MessageEventArgs e)
@@ -69,7 +83,7 @@ namespace Server.Application
                 Scores = scores
             };
 
-            clientManager.WriteData(responseMessage, requestMessage.SenderId);
+            clientDataManager.WriteData(responseMessage, requestMessage.SenderId);
         }
 
         private void SubmitAnswer(object sender, MessageEventArgs e)
@@ -110,20 +124,20 @@ namespace Server.Application
 
         private void ConnectionRequestedMonitor(object sender, MessageEventArgs e)
         {
-            ConnectionRequestMonitorMessage request = (ConnectionRequestMonitorMessage)e.MessageContent;
+            ConnectionRequestMessage request = (ConnectionRequestMessage)e.MessageContent;
             LogText(string.Format("Connection request from Monitor ({0}) to {1}", request.SenderId, this.Configuration.ServerName));
 
             if (this.monitors.Contains(request.SenderId))
             {
                 ConnectionDeniedMessage deniedMessage = new ConnectionDeniedMessage();
-                monitorManager.WriteData(deniedMessage, request.SenderId);
+                monitorDataManager.WriteData(deniedMessage, request.SenderId);
                 LogText(string.Format("Connection denied from {0} to Monitor ({1})", this.Configuration.ServerName, request.SenderId));
             }
             else
             {
                 this.monitors.Add(request.SenderId);
                 ConnectionAcceptMessage acceptMessage = new ConnectionAcceptMessage();
-                monitorManager.WriteData(acceptMessage, request.SenderId);
+                monitorDataManager.WriteData(acceptMessage, request.SenderId);
                 LogText(string.Format("Connection accepted from {0} to Monitor ({1})", this.Configuration.ServerName, request.SenderId));
             }
         }
@@ -156,13 +170,13 @@ namespace Server.Application
 
         private void ConnectionRequestedClient(object sender, MessageEventArgs e)
         {
-            ConnectionRequestClientMessage request = (ConnectionRequestClientMessage)e.MessageContent;
+            ConnectionRequestMessage request = (ConnectionRequestMessage)e.MessageContent;
             LogText(string.Format("Connection request from {0} to {1}", request.PlayerName, this.Configuration.ServerName));
 
             if (this.clients.ContainsKey(request.SenderId) || this.clients.Any(p => p.Value.PlayerName == request.PlayerName))
             {
                 ConnectionDeniedMessage deniedMessage = new ConnectionDeniedMessage();
-                clientManager.WriteData(deniedMessage, request.SenderId);
+                clientDataManager.WriteData(deniedMessage, request.SenderId);
                 LogText(string.Format("Connection denied from {0} to {1}", this.Configuration.ServerName, request.PlayerName));
             }
             else
@@ -172,7 +186,7 @@ namespace Server.Application
                 client.MaxScoreReached += ClientWon;
                 this.clients.Add(request.SenderId, client);
                 ConnectionAcceptMessage acceptedMessage = new ConnectionAcceptMessage();
-                clientManager.WriteData(acceptedMessage, request.SenderId);
+                clientDataManager.WriteData(acceptedMessage, request.SenderId);
                 this.LogText(string.Format("Connection accepted from {0} to {1}", this.Configuration.ServerName, request.PlayerName));
 
                 this.CreateQuestion(request.SenderId);
@@ -189,7 +203,7 @@ namespace Server.Application
                 Score = client.Score
             };
 
-            this.clientManager.WriteData(wonMessage, clientGuid);
+            this.clientDataManager.WriteData(wonMessage, clientGuid);
             this.LogText(string.Format("{0} won.", this.clients[clientGuid].PlayerName));
         }
 
@@ -202,7 +216,7 @@ namespace Server.Application
                 Score = client.Score
             };
 
-            this.clientManager.WriteData(lostMessage, clientGuid);
+            this.clientDataManager.WriteData(lostMessage, clientGuid);
             this.LogText(string.Format("{0} lost.", this.clients[clientGuid].PlayerName));
         }
 
@@ -218,7 +232,7 @@ namespace Server.Application
                 Text = loggingText
             };
 
-            monitors.ForEach(p => monitorManager.WriteData(loggingMessage, p));
+            monitors.ForEach(p => monitorDataManager.WriteData(loggingMessage, p));
 
             #region reflectionLogging
             //var message = e.MessageContent;
@@ -279,7 +293,7 @@ namespace Server.Application
                 //Thread.Sleep(1);
 
                 this.LogText(string.Format("Question {0} sent from {1} to {2}", questionMessage.QuestionText, this.Configuration.ServerName, this.clients[clientGuid].PlayerName));
-                clientManager.WriteData(questionMessage, clientGuid);
+                clientDataManager.WriteData(questionMessage, clientGuid);
 
                 this.questions[clientGuid] = question;
                 this.clientTimers[clientGuid] = new Timer(this.QuestionTimeExpired, clientGuid, question.Time * 1000, Timeout.Infinite);

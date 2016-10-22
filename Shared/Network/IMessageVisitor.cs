@@ -19,7 +19,7 @@ namespace Shared.Data
 
         void ProcessMessage(ConnectionDeniedMessage message);
 
-        void ProcessMessage(ConnectionRequestClientMessage message);
+        void ProcessMessage(ConnectionRequestMessage message);
 
         void ProcessMessage(ScoresRequestMessage message);
 
@@ -28,10 +28,6 @@ namespace Shared.Data
         void ProcessMessage(QuestionMessage message);
 
         void ProcessMessage(DisconnectMessage message);
-
-        void ProcessMessage(ConnectionRequestMonitorMessage message);
-
-        void ProcessMessage(ConnectionRequestServerMessage message);
 
         void ProcessMessage(LoggingMessage message);
 

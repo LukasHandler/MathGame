@@ -57,7 +57,7 @@ namespace Monitor.Application
         {
             serverEndPoint = serverPoint;
 
-            ConnectionRequestMonitorMessage requestMessage = new ConnectionRequestMonitorMessage()
+            ConnectionRequestMessage requestMessage = new ConnectionRequestMessage()
             {
                 SenderId = monitorGuid
             };

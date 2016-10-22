@@ -96,7 +96,7 @@ namespace Client.Application
         {
             serverEndPoint = server;
 
-            ConnectionRequestClientMessage request = new ConnectionRequestClientMessage()
+            ConnectionRequestMessage request = new ConnectionRequestMessage()
             {
                 SenderId = clientGuid,
                 PlayerName = playerName

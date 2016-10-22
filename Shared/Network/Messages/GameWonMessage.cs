@@ -7,8 +7,10 @@ using System.Threading.Tasks;
 namespace Shared.Data.Messages
 {
     [Serializable]
-    public class ConnectionRequestMonitorMessage : Message
+    public class GameWonMessage : Message
     {
+        public int Score { get; set; }
+
         public override void ProcessMessage(IMessageVisitor processor)
         {
             processor.ProcessMessage(this);
