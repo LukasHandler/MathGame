@@ -11,6 +11,8 @@ namespace Shared.Data.Messages
     public abstract class Message
     {
         public object SenderInformation { get; set; }
+
+        public string SenderName { get; set; }
         
         public abstract void ProcessMessage(IMessageVisitor processor);
     }

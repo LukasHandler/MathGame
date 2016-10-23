@@ -14,7 +14,7 @@ namespace Monitor.Presentation
     {
         static void Main(string[] args)
         {
-            IPAddress serverIp;
+            //IPAddress serverIp;
 
             //do
             //{
@@ -23,7 +23,7 @@ namespace Monitor.Presentation
 
             //} while (!IPAddress.TryParse(input, out serverIp));
 
-            int serverPort = 0;
+            //int serverPort = 0;
 
             //do
             //{
@@ -32,12 +32,12 @@ namespace Monitor.Presentation
 
             //} while (!Int32.TryParse(input, out serverPort));
 
-            serverIp = IPAddress.Parse("127.0.0.1");
-            serverPort = 4801;
+            //serverIp = IPAddress.Parse("127.0.0.1");
+            //serverPort = 4801;
 
-            IPEndPoint serverEndPoint = new IPEndPoint(serverIp, serverPort);
+            //IPEndPoint serverEndPoint = new IPEndPoint(serverIp, serverPort);
 
-            Console.ReadKey();
+            var serverEndPoint = ConsoleInput.GetIPEndPoint("Server");
             NetworkService.Connect(serverEndPoint);
             NetworkService.OnLoggingDataReceived += PrintLogging;
 

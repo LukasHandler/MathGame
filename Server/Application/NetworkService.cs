@@ -39,7 +39,7 @@ namespace Server.Application
 
         private MessageProcessor messageProcessor;
 
-        private object serverTargetInformation;
+        private Tuple<string, object> serverTargetInformation;
 
         public NetworkService(ServerConfiguration configuration)
         {
@@ -80,7 +80,8 @@ namespace Server.Application
             }
             else
             {
-                this.serverDataManager.WriteData(e.MessageContent, this.serverTargetInformation);
+                this.LogText(string.Format("{0} received message from {1} and sent it to {2}", this.Configuration.ServerName, e.MessageContent.SenderName, this.serverTargetInformation.Item1));
+                this.serverDataManager.WriteData(e.MessageContent, this.serverTargetInformation.Item2);
             }
         }
 
@@ -94,6 +95,7 @@ namespace Server.Application
         {
             ConnectionAcceptServerMessage serverReponse = (ConnectionAcceptServerMessage)e.MessageContent;
             this.isActive = serverReponse.IsTargetActive;
+            this.serverTargetInformation = new Tuple<string, object>(serverReponse.SenderName, this.serverTargetInformation.Item2);
         }
 
         private void ServerMessageReceived(object sender, MessageEventArgs e)
@@ -110,11 +112,12 @@ namespace Server.Application
 
         public void ConnectToServer(object server)
         {
-            this.serverTargetInformation = server;
+            this.serverTargetInformation = new Tuple<string, object>(null, server);
 
             ConnectionRequestServerMessage connectionRequest = new ConnectionRequestServerMessage()
             {
-                SenderStartTime = this.startTime
+                SenderStartTime = this.startTime,
+                SenderName = this.Configuration.ServerName
             };
 
             this.serverDataManager.WriteData(connectionRequest, server);
@@ -151,11 +154,12 @@ namespace Server.Application
 
             ConnectionAcceptServerMessage response = new ConnectionAcceptServerMessage()
             {
+                SenderName = this.Configuration.ServerName,
                 IsTargetActive = !this.isActive
             };
 
-            this.serverTargetInformation = request.SenderInformation;
-            this.serverDataManager.WriteData(response, this.serverTargetInformation);
+            this.serverTargetInformation = new Tuple<string, object>(request.SenderName, request.SenderInformation);
+            this.serverDataManager.WriteData(response, this.serverTargetInformation.Item2);
         }
 
         private void SendScores(object sender, MessageEventArgs e)
@@ -257,25 +261,28 @@ namespace Server.Application
 
         private void ConnectionRequestedClient(object sender, MessageEventArgs e)
         {
-            ConnectionRequestClientMessage request = (ConnectionRequestClientMessage)e.MessageContent;
-            LogText(string.Format("Connection request from {0} to {1}", request.PlayerName, this.Configuration.ServerName));
-            var client = this.GetClientFromMessage(request);
+            var message = e.MessageContent;
+            var senderName = message.SenderName;
+            var senderInformation = message.SenderInformation;
 
-            if (client != null || this.clientsTargetInformation.Any(p => p.Key.PlayerName == request.PlayerName))
+            LogText(string.Format("Connection request from {0} to {1}", senderName, this.Configuration.ServerName));
+            var client = this.GetClientFromMessage(message);
+
+            if (client != null || this.clientsTargetInformation.Any(p => p.Key.PlayerName == senderName))
             {
                 ConnectionDeniedMessage deniedMessage = new ConnectionDeniedMessage();
-                clientDataManager.WriteData(deniedMessage, request.SenderInformation);
-                LogText(string.Format("Connection denied from {0} to {1}", this.Configuration.ServerName, request.PlayerName));
+                clientDataManager.WriteData(deniedMessage, senderInformation);
+                LogText(string.Format("Connection denied from {0} to {1}", this.Configuration.ServerName, senderName));
             }
             else
             {
-                client = new Client(request.PlayerName, this.Configuration.MinScore, this.Configuration.MaxScore);
+                client = new Client(senderName, this.Configuration.MinScore, this.Configuration.MaxScore);
                 client.MinScoreReached += ClientLost;
                 client.MaxScoreReached += ClientWon;
-                this.clientsTargetInformation.Add(client, request.SenderInformation);
+                this.clientsTargetInformation.Add(client, senderInformation);
                 ConnectionAcceptMessage acceptedMessage = new ConnectionAcceptMessage();
-                clientDataManager.WriteData(acceptedMessage, request.SenderInformation);
-                this.LogText(string.Format("Connection accepted from {0} to {1}", this.Configuration.ServerName, request.PlayerName));
+                clientDataManager.WriteData(acceptedMessage, senderInformation);
+                this.LogText(string.Format("Connection accepted from {0} to {1}", this.Configuration.ServerName, senderName));
 
                 this.CreateQuestion(client);
             }

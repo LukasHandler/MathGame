@@ -33,6 +33,8 @@ namespace Client.Application
 
         private IPEndPoint serverEndPoint;
 
+        private string clientName;
+
         public NetworkService()
         {
             messageProcessor = new MessageProcessor();
@@ -92,12 +94,10 @@ namespace Client.Application
 
         public void Connect(IPEndPoint server, string playerName)
         {
+            this.clientName = playerName;
             serverEndPoint = server;
 
-            ConnectionRequestClientMessage request = new ConnectionRequestClientMessage()
-            {
-                PlayerName = playerName
-            };
+            ConnectionRequestClientMessage request = new ConnectionRequestClientMessage();
 
             Send(request);
         }
@@ -123,6 +123,7 @@ namespace Client.Application
 
         private void Send(Message request)
         {
+            request.SenderName = this.clientName;
             networkManager.WriteData(request, serverEndPoint);
         }
 
