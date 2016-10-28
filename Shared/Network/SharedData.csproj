@@ -72,6 +72,7 @@
     <Compile Include="Messages\ConnectionAcceptMessage.cs" />
     <Compile Include="Messages\ConnectionDeniedMessage.cs" />
     <Compile Include="Messages\ConnectionRequestClientMessage.cs" />
+    <Compile Include="Messages\RedirectedMessage.cs" />
     <Compile Include="Messages\ScoresRequestMessage.cs" />
     <Compile Include="Messages\ScoresResponseMessage.cs" />
     <Compile Include="Messages\Message.cs" />

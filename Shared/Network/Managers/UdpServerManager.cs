@@ -44,6 +44,11 @@ namespace Shared.Data.Managers
 
             Message receivedMessage = MessageByteConverter.ConvertToMessage(received);
 
+            if (receivedMessage.SenderInformation == null)
+            {
+                receivedMessage.SenderInformation = senderIp;
+            }
+
             if (OnDataReceived != null)
             {
                 OnDataReceived(this, new MessageEventArgs(receivedMessage));
