@@ -36,5 +36,7 @@ namespace Shared.Data
         void ProcessMessage(GameLostMessage message);
 
         void ProcessMessage(GameWonMessage message);
+
+        void ProcessMessage(ForwardingMessage message);
     }
 }

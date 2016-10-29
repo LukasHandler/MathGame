@@ -66,6 +66,7 @@
     <Compile Include="Messages\ConnectionRequestServerMessage.cs" />
     <Compile Include="Messages\DisconnectMessage.cs" />
     <Compile Include="Messages\DisconnectServerMessage.cs" />
+    <Compile Include="Messages\ForwardingMessage.cs" />
     <Compile Include="Messages\GameLostMessage.cs" />
     <Compile Include="Messages\GameWonMessage.cs" />
     <Compile Include="Messages\LoggingMessage.cs" />

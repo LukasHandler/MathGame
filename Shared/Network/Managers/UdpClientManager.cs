@@ -50,7 +50,7 @@ namespace Shared.Data.Managers
 
             if (OnDataReceived != null)
             {
-                OnDataReceived(this, new MessageEventArgs(receivedMessage));
+                OnDataReceived(senderIp, new MessageEventArgs(receivedMessage));
             }
         }
     }

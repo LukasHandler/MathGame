@@ -44,14 +44,14 @@ namespace Shared.Data.Managers
 
             Message receivedMessage = MessageByteConverter.ConvertToMessage(received);
 
-            if (receivedMessage.SenderInformation == null)
-            {
-                receivedMessage.SenderInformation = senderIp;
-            }
+            //if (receivedMessage.SenderInformation == null)
+            //{
+            //    receivedMessage.SenderInformation = senderIp;
+            //}
 
             if (OnDataReceived != null)
             {
-                OnDataReceived(this, new MessageEventArgs(receivedMessage));
+                OnDataReceived(senderIp, new MessageEventArgs(receivedMessage));
             }
         }
 
@@ -61,10 +61,10 @@ namespace Shared.Data.Managers
         {
             var targetEndpoint = (IPEndPoint)target;
 
-            if (data.SenderInformation == null)
-            {
-                data.SenderInformation = receiveClient.Client.LocalEndPoint;
-            }
+            //if (data.SenderInformation == null)
+            //{
+            //    data.SenderInformation = receiveClient.Client.LocalEndPoint;
+            //}
 
             byte[] bytes = MessageByteConverter.ConvertToBytes(data);
             sendClient.Connect(targetEndpoint);

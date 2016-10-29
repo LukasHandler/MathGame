@@ -53,17 +53,17 @@ namespace Shared.Data.Managers
 
                     if (OnDataReceived != null)
                     {
-                        OnDataReceived(this, new MessageEventArgs(receivedMessage));
+                        OnDataReceived(target, new MessageEventArgs(receivedMessage));
                     }
                 };
 
                 stream.BeginRead(buffer, 0, buffer.Length, callback, null);
             }
 
-            if (data.SenderInformation == null)
-            {
-                data.SenderInformation = client.Client.LocalEndPoint;
-            }
+            //if (data.SenderInformation == null)
+            //{
+            //    data.SenderInformation = client.Client.LocalEndPoint;
+            //}
 
             byte[] bytes = MessageByteConverter.ConvertToBytes(data);
             stream.Write(bytes, 0, bytes.Length);

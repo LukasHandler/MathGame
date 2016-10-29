@@ -11,6 +11,16 @@ namespace Shared.Data
 {
     public class MessageProcessor : IMessageVisitor
     {
+        private Dictionary<Message, object> senderInformation;
+
+        private object locker;
+
+        public MessageProcessor()
+        {
+            this.senderInformation = new Dictionary<Message, object>();
+            locker = new object();
+        }
+
         public EventHandler<MessageEventArgs> OnConnectionRequestClient;
 
         public EventHandler<MessageEventArgs> OnConnectionRequestServer;
@@ -40,6 +50,8 @@ namespace Shared.Data
         public EventHandler<MessageEventArgs> OnGameWonMessage;
 
         public EventHandler<MessageEventArgs> OnGameLostMessage;
+
+        public EventHandler<MessageEventArgs> OnForwardingMessage;
 
         public void ProcessMessage(ConnectionAcceptServerMessage message)
         {
@@ -116,16 +128,31 @@ namespace Shared.Data
             this.RaiseEvent(OnGameLostMessage, message);
         }
 
+        public void ProcessMessage(ForwardingMessage message)
+        {
+            this.RaiseEvent(OnForwardingMessage, message);
+        }
+
         public void RaiseEvent(EventHandler<MessageEventArgs> eventHandler, Message message)
         {
             if (eventHandler != null)
             {
-                eventHandler(this, new MessageEventArgs(message));
+                eventHandler(this.senderInformation[message], new MessageEventArgs(message));
+            }
+
+            lock (locker)
+            {
+                this.senderInformation.Remove(message);
             }
         }
 
         public void DataReceived(object sender, MessageEventArgs eventArgs)
         {
+            lock (locker)
+            {
+                this.senderInformation.Add(eventArgs.MessageContent, sender);
+            }
+
             eventArgs.MessageContent.ProcessMessage(this);
         }
     }

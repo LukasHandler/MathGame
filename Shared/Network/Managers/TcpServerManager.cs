@@ -45,6 +45,8 @@ namespace Shared.Data.Managers
 
                 IPEndPoint clientEndPoint = ((IPEndPoint)client.Client.RemoteEndPoint);
 
+                this.streams.Add(clientEndPoint, stream);
+
                 AsyncCallback callback = null;
                 byte[] buffer = new byte[10000];
 
@@ -59,18 +61,13 @@ namespace Shared.Data.Managers
                         Array.Copy(buffer, toConvertBuffer, bytesRead);
 
                         buffer = new byte[10000];
-                        stream.BeginRead(buffer, 0, buffer.Length, callback, null);
+                        stream.BeginRead(buffer, 0, buffer.Length, callback, clientEndPoint);
 
                         Message receivedMessage = MessageByteConverter.ConvertToMessage(toConvertBuffer);
 
-                        if (!this.streams.Any(p => p.Key.Equals(receivedMessage.SenderInformation)))
-                        {
-                            this.streams.Add((IPEndPoint)receivedMessage.SenderInformation, stream);
-                        }
-
                         if (OnDataReceived != null)
                         {
-                            OnDataReceived(this, new MessageEventArgs(receivedMessage));
+                            OnDataReceived(clientEndPoint, new MessageEventArgs(receivedMessage));
                         }
                     }
                     catch (System.IO.IOException)
@@ -79,7 +76,7 @@ namespace Shared.Data.Managers
                     }
                 };
 
-                stream.BeginRead(buffer, 0, buffer.Length, callback, null);
+                stream.BeginRead(buffer, 0, buffer.Length, callback, clientEndPoint);
             }
         }
 
@@ -89,11 +86,11 @@ namespace Shared.Data.Managers
         {
             var targetEndPoint = (IPEndPoint)target;
 
-            if (data.SenderInformation == null)
-            {
-                //Returns 0.0.0.0 -> so the ip's it listens to.
-                data.SenderInformation = tcpListener.LocalEndpoint;
-            }
+            //if (data.SenderInformation == null)
+            //{
+            //    //Returns 0.0.0.0 -> so the ip's it listens to.
+            //    data.SenderInformation = tcpListener.LocalEndpoint;
+            //}
 
             byte[] bytes = MessageByteConverter.ConvertToBytes(data);
 

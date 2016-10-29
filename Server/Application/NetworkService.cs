@@ -55,7 +55,7 @@ namespace Server.Application
             messageProcessor.OnScoreRequest += SendScores;
 
             clientDataManager = new UdpServerManager(this.Configuration.ClientPort);
-            clientDataManager.OnDataReceived += OnClientDataReceived;
+            clientDataManager.OnDataReceived += messageProcessor.DataReceived;
 
             messageProcessor.OnConnectionRequestMonitor += ConnectionRequestedMonitor;
             monitorDataManager = new TcpServerManager(this.Configuration.MonitorPort);
@@ -66,23 +66,17 @@ namespace Server.Application
             this.clientsTargetInformation = new Dictionary<Client, object>();
 
             this.serverDataManager = new TcpClientServerManager(configuration.ServerPort);
-            this.serverDataManager.OnDataReceived += ServerMessageReceived;
+            this.serverDataManager.OnDataReceived += messageProcessor.DataReceived;
             messageProcessor.OnConnectionRequestServer += ConnectionRequestServer;
             messageProcessor.OnConnectionAcceptedServer += ConnectionAcceptedServer;
             messageProcessor.OnDisconnectServer += DisconnectServer;
+            messageProcessor.OnForwardingMessage += ForwardMessage;
         }
 
-        private void OnClientDataReceived(object sender, MessageEventArgs e)
+        private void ForwardMessage(object sender, MessageEventArgs e)
         {
-            if (this.isActive)
-            {
-                messageProcessor.DataReceived(sender, e);
-            }
-            else
-            {
-                this.LogText(string.Format("{0} received message from {1} and sent it to {2}", this.Configuration.ServerName, e.MessageContent.SenderName, this.serverTargetInformation.Item1));
-                this.serverDataManager.WriteData(e.MessageContent, this.serverTargetInformation.Item2);
-            }
+            ForwardingMessage forwardingMessage = e.MessageContent as ForwardingMessage;
+            this.clientDataManager.WriteData(forwardingMessage.InnerMessage, forwardingMessage.Target);
         }
 
         private void DisconnectServer(object sender, MessageEventArgs e)
@@ -96,18 +90,6 @@ namespace Server.Application
             ConnectionAcceptServerMessage serverReponse = (ConnectionAcceptServerMessage)e.MessageContent;
             this.isActive = serverReponse.IsTargetActive;
             this.serverTargetInformation = new Tuple<string, object>(serverReponse.SenderName, this.serverTargetInformation.Item2);
-        }
-
-        private void ServerMessageReceived(object sender, MessageEventArgs e)
-        {
-            if (this.isActive)
-            {
-                this.messageProcessor.DataReceived(this, e);
-            }
-            else
-            {
-                this.serverDataManager.WriteData(e.MessageContent, serverTargetInformation);
-            }
         }
 
         public void ConnectToServer(object server)
@@ -158,7 +140,7 @@ namespace Server.Application
                 IsTargetActive = !this.isActive
             };
 
-            this.serverTargetInformation = new Tuple<string, object>(request.SenderName, request.SenderInformation);
+            this.serverTargetInformation = new Tuple<string, object>(request.SenderName, sender);
             this.serverDataManager.WriteData(response, this.serverTargetInformation.Item2);
         }
 
@@ -172,14 +154,15 @@ namespace Server.Application
                 Scores = scores
             };
 
-            clientDataManager.WriteData(responseMessage, requestMessage.SenderInformation);
+            this.SendClientMessage(responseMessage, sender);
+            //clientDataManager.WriteData(responseMessage, sender);
         }
 
         private void SubmitAnswer(object sender, MessageEventArgs e)
         {
             AnswerMessage answerMessage = e.MessageContent as AnswerMessage;
-            IPEndPoint clientAdress = (IPEndPoint)answerMessage.SenderInformation;
-            var client = this.clientsTargetInformation.First(p => p.Value.Equals(clientAdress)).Key;
+            //IPEndPoint clientAdress = (IPEndPoint)answerMessage.SenderInformation;
+            var client = this.clientsTargetInformation.First(p => p.Value.Equals(sender)).Key;
 
             if (client.Score < this.Configuration.MaxScore &&
                 client.Score > this.Configuration.MinScore)
@@ -215,27 +198,27 @@ namespace Server.Application
         private void ConnectionRequestedMonitor(object sender, MessageEventArgs e)
         {
             ConnectionRequestMonitorMessage request = (ConnectionRequestMonitorMessage)e.MessageContent;
-            LogText(string.Format("Connection request from Monitor ({0}) to {1}", request.SenderInformation, this.Configuration.ServerName));
+            LogText(string.Format("Connection request from Monitor ({0}) to {1}", sender, this.Configuration.ServerName));
 
-            if (this.monitorsTargetInformation.Contains(request.SenderInformation))
+            if (this.monitorsTargetInformation.Contains(sender))
             {
                 ConnectionDeniedMessage deniedMessage = new ConnectionDeniedMessage();
-                monitorDataManager.WriteData(deniedMessage, request.SenderInformation);
-                LogText(string.Format("Connection denied from {0} to Monitor ({1})", this.Configuration.ServerName, request.SenderInformation));
+                monitorDataManager.WriteData(deniedMessage, sender);
+                LogText(string.Format("Connection denied from {0} to Monitor ({1})", this.Configuration.ServerName, sender));
             }
             else
             {
-                this.monitorsTargetInformation.Add(request.SenderInformation);
+                this.monitorsTargetInformation.Add(sender);
                 ConnectionAcceptMessage acceptMessage = new ConnectionAcceptMessage();
-                monitorDataManager.WriteData(acceptMessage, request.SenderInformation);
-                LogText(string.Format("Connection accepted from {0} to Monitor ({1})", this.Configuration.ServerName, request.SenderInformation));
+                monitorDataManager.WriteData(acceptMessage, sender);
+                LogText(string.Format("Connection accepted from {0} to Monitor ({1})", this.Configuration.ServerName, sender));
             }
         }
 
         private void Disconnect(object sender, MessageEventArgs e)
         {
             DisconnectMessage disconnectMessage = (DisconnectMessage)e.MessageContent;
-            Client client = this.GetClientFromMessage(disconnectMessage);
+            Client client = this.GetClientFromSenderInformation(sender);
 
             if (this.clientsTargetInformation.ContainsKey(client))
             {
@@ -248,10 +231,10 @@ namespace Server.Application
                 LogText(string.Format("{0} disconnected from {1}", client.PlayerName, this.Configuration.ServerName));
                 this.clientsTargetInformation.Remove(client);
             }
-            else if (this.monitorsTargetInformation.Contains(disconnectMessage.SenderInformation))
+            else if (this.monitorsTargetInformation.Contains(sender))
             {
-                LogText(string.Format("Monitor ({0}) disconnected from {1}", disconnectMessage.SenderInformation, this.Configuration.ServerName));
-                this.monitorsTargetInformation.Remove(disconnectMessage.SenderInformation);
+                LogText(string.Format("Monitor ({0}) disconnected from {1}", sender, this.Configuration.ServerName));
+                this.monitorsTargetInformation.Remove(sender);
             }
             else
             {
@@ -263,15 +246,15 @@ namespace Server.Application
         {
             var message = e.MessageContent;
             var senderName = message.SenderName;
-            var senderInformation = message.SenderInformation;
 
             LogText(string.Format("Connection request from {0} to {1}", senderName, this.Configuration.ServerName));
-            var client = this.GetClientFromMessage(message);
+            var client = this.GetClientFromSenderInformation(sender);
 
             if (client != null || this.clientsTargetInformation.Any(p => p.Key.PlayerName == senderName))
             {
                 ConnectionDeniedMessage deniedMessage = new ConnectionDeniedMessage();
-                clientDataManager.WriteData(deniedMessage, senderInformation);
+                this.SendClientMessage(deniedMessage, sender);
+                //clientDataManager.WriteData(deniedMessage, sender);
                 LogText(string.Format("Connection denied from {0} to {1}", this.Configuration.ServerName, senderName));
             }
             else
@@ -279,9 +262,10 @@ namespace Server.Application
                 client = new Client(senderName, this.Configuration.MinScore, this.Configuration.MaxScore);
                 client.MinScoreReached += ClientLost;
                 client.MaxScoreReached += ClientWon;
-                this.clientsTargetInformation.Add(client, senderInformation);
+                this.clientsTargetInformation.Add(client, sender);
                 ConnectionAcceptMessage acceptedMessage = new ConnectionAcceptMessage();
-                clientDataManager.WriteData(acceptedMessage, senderInformation);
+                //clientDataManager.WriteData(acceptedMessage, sender);
+                this.SendClientMessage(acceptedMessage, sender);
                 this.LogText(string.Format("Connection accepted from {0} to {1}", this.Configuration.ServerName, senderName));
 
                 this.CreateQuestion(client);
@@ -298,7 +282,8 @@ namespace Server.Application
                 Score = client.Score
             };
 
-            this.clientDataManager.WriteData(wonMessage, this.clientsTargetInformation[client]);
+            this.SendClientMessage(wonMessage, this.clientsTargetInformation[client]);
+            //this.clientDataManager.WriteData(wonMessage, this.clientsTargetInformation[client]);
             this.LogText(string.Format("{0} won.", client.PlayerName));
         }
 
@@ -310,7 +295,8 @@ namespace Server.Application
                 Score = client.Score
             };
 
-            this.clientDataManager.WriteData(lostMessage, this.clientsTargetInformation[client]);
+            this.SendClientMessage(lostMessage, this.clientsTargetInformation[client]);
+            //this.clientDataManager.WriteData(lostMessage, this.clientsTargetInformation[client]);
             this.LogText(string.Format("{0} lost.", client.PlayerName));
         }
 
@@ -384,7 +370,8 @@ namespace Server.Application
                 };
 
                 this.LogText(string.Format("Question {0} sent from {1} to {2}", questionMessage.QuestionText, this.Configuration.ServerName, client.PlayerName));
-                clientDataManager.WriteData(questionMessage, this.clientsTargetInformation[client]);
+                //clientDataManager.WriteData(questionMessage, this.clientsTargetInformation[client]);
+                this.SendClientMessage(questionMessage, this.clientsTargetInformation[client]);
 
                 this.questions[client] = question;
                 this.clientTimers[client] = new Timer(this.QuestionTimeExpired, client, question.Time * 1000, Timeout.Infinite);
@@ -399,9 +386,22 @@ namespace Server.Application
             this.CreateQuestion(client);
         }
 
-        private Client GetClientFromMessage(Message message)
+        private Client GetClientFromSenderInformation(object senderInformation)
         {
-            return this.clientsTargetInformation.FirstOrDefault(p => p.Value.Equals(message.SenderInformation)).Key;
+            return this.clientsTargetInformation.FirstOrDefault(p => p.Value.Equals(senderInformation)).Key;
+        }
+
+        private void SendClientMessage(Message message, object target)
+        {
+            if (this.isActive)
+            {
+                this.clientDataManager.WriteData(message, target);
+            }
+            else
+            {
+                ForwardingMessage forwardingMessage = new ForwardingMessage() { InnerMessage = message, Target = target };
+                this.serverDataManager.WriteData(forwardingMessage, this.serverTargetInformation.Item2);
+            }
         }
     }
 }
