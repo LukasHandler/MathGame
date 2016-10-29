@@ -10,6 +10,7 @@ using Shared.Data.Managers;
 using System.Reflection;
 using Shared.Data.EventArguments;
 using System.Threading;
+using System.Collections.Concurrent;
 
 namespace Server.Application
 {
@@ -37,8 +38,6 @@ namespace Server.Application
 
         public EventHandler<LoggingEventArgs> OnLoggingMessage;
 
-        private MessageProcessor messageProcessor;
-
         private Tuple<string, object> serverTargetInformation;
 
         public NetworkService(ServerConfiguration configuration)
@@ -48,34 +47,102 @@ namespace Server.Application
             this.questions = new Dictionary<Client, MathQuestion>();
             this.Configuration = configuration;
 
-            messageProcessor = new MessageProcessor();
-            messageProcessor.OnConnectionRequestClient += ConnectionRequestedClient;
-            messageProcessor.OnDisconnect += Disconnect;
-            messageProcessor.OnAnswer += SubmitAnswer;
-            messageProcessor.OnScoreRequest += SendScores;
+            MessageProcessor clientMessageProcessor = new MessageProcessor();
+            clientMessageProcessor.OnConnectionRequestClient += ConnectionRequestedClient;
+            clientMessageProcessor.OnDisconnect += Disconnect;
+            clientMessageProcessor.OnAnswer += SubmitAnswer;
+            clientMessageProcessor.OnScoreRequest += SendScores;
 
             clientDataManager = new UdpServerManager(this.Configuration.ClientPort);
-            clientDataManager.OnDataReceived += messageProcessor.DataReceived;
+            clientDataManager.OnDataReceived += clientMessageProcessor.DataReceived;
 
-            messageProcessor.OnConnectionRequestMonitor += ConnectionRequestedMonitor;
+            MessageProcessor monitorMessageProcessor = new MessageProcessor();
+            monitorMessageProcessor.OnConnectionRequestMonitor += ConnectionRequestedMonitor;
             monitorDataManager = new TcpServerManager(this.Configuration.MonitorPort);
-            monitorDataManager.OnDataReceived += messageProcessor.DataReceived;
+            monitorDataManager.OnDataReceived += monitorMessageProcessor.DataReceived;
             monitorsTargetInformation = new List<object>();
 
             clientTimers = new Dictionary<Client, Timer>();
             this.clientsTargetInformation = new Dictionary<Client, object>();
 
+            MessageProcessor serverMessageProcessor = new MessageProcessor();
             this.serverDataManager = new TcpClientServerManager(configuration.ServerPort);
-            this.serverDataManager.OnDataReceived += messageProcessor.DataReceived;
-            messageProcessor.OnConnectionRequestServer += ConnectionRequestServer;
-            messageProcessor.OnConnectionAcceptedServer += ConnectionAcceptedServer;
-            messageProcessor.OnDisconnectServer += DisconnectServer;
-            messageProcessor.OnForwardingMessage += ForwardMessage;
+            this.serverDataManager.OnDataReceived += serverMessageProcessor.DataReceived;
+            serverMessageProcessor.OnConnectionRequestServer += ConnectionRequestServer;
+            serverMessageProcessor.OnConnectionAcceptedServer += ConnectionAcceptedServer;
+            serverMessageProcessor.OnDisconnectServer += DisconnectServer;
+            serverMessageProcessor.OnForwardingMessage += ForwardMessage;
+            serverMessageProcessor.OnServerScoreRequestMessage += ServerScoreRequest;
+            serverMessageProcessor.OnServerScoreResponseMessage += ServerScoreRepsonse;
+
+            serverMessageProcessor.OnServerClientsRequestMessage += ClientsRequestMessage;
+            serverMessageProcessor.OnServerClientsResponseMessage += ClientsResponseMessage;
+        }
+
+        private void ClientsResponseMessage(object sender, MessageEventArgs e)
+        {
+            BroadcastResponseMessage clientsResponseMessage = e.MessageContent as BroadcastResponseMessage;
+            var broadcastMessage = clientsResponseMessage.MessageToBroadcast;
+
+            foreach (var item in this.clientsTargetInformation)
+            {
+                this.clientDataManager.WriteData(broadcastMessage, item.Value);
+            }
+
+            foreach (var item in clientsResponseMessage.ClientsInformation)
+            {
+                this.clientDataManager.WriteData(broadcastMessage, item);
+            }
+        }
+
+        private void ClientsRequestMessage(object sender, MessageEventArgs e)
+        {
+            BroadcastRequestMessage broadcastRequestMessage = e.MessageContent as BroadcastRequestMessage;
+
+            BroadcastResponseMessage clientsResponseMessage = new BroadcastResponseMessage()
+            {
+                ClientsInformation = this.clientsTargetInformation.Select(p => p.Value).ToList(),
+                MessageToBroadcast = broadcastRequestMessage.MessageToBroadcast
+            };
+
+            this.serverDataManager.WriteData(clientsResponseMessage, this.serverTargetInformation.Item2);
+        }
+
+        private void ServerScoreRepsonse(object sender, MessageEventArgs e)
+        {
+            ServerScoreResponseMessage serverScoreResponse = e.MessageContent as ServerScoreResponseMessage;
+
+            var scores = this.GetScores();
+
+            foreach (var item in serverScoreResponse.Scores)
+            {
+                scores.Add(item);
+            }
+
+            ScoresResponseMessage scoreResponse = new ScoresResponseMessage()
+            {
+                Scores = scores.OrderByDescending(p => p.Score).ToList()
+            };
+
+            this.clientDataManager.WriteData(scoreResponse, serverScoreResponse.RequestSender);
+        }
+
+        private void ServerScoreRequest(object sender, MessageEventArgs e)
+        {
+            var serverScoreRequest = e.MessageContent as ServerScoreRequestMessage;
+            ServerScoreResponseMessage serverScoreResponse = new ServerScoreResponseMessage()
+            {
+                Scores = this.GetScores(),
+                RequestSender = serverScoreRequest.RequestSender
+            };
+
+            this.serverDataManager.WriteData(serverScoreResponse, sender);
         }
 
         private void ForwardMessage(object sender, MessageEventArgs e)
         {
             ForwardingMessage forwardingMessage = e.MessageContent as ForwardingMessage;
+            this.LogText(string.Format("{0} received message from {1} and sent it to {2}", this.Configuration.ServerName, this.serverTargetInformation.Item1, forwardingMessage.TargetName));
             this.clientDataManager.WriteData(forwardingMessage.InnerMessage, forwardingMessage.Target);
         }
 
@@ -108,7 +175,7 @@ namespace Server.Application
         public void DisconnectFromServer()
         {
             DisconnectServerMessage disconnect = new DisconnectServerMessage();
-            this.serverDataManager.WriteData(disconnect, this.serverTargetInformation);
+            this.serverDataManager.WriteData(disconnect, this.serverTargetInformation.Item2);
         }
 
         private void ConnectionRequestServer(object sender, MessageEventArgs e)
@@ -147,15 +214,40 @@ namespace Server.Application
         private void SendScores(object sender, MessageEventArgs e)
         {
             ScoresRequestMessage requestMessage = e.MessageContent as ScoresRequestMessage;
+            List<ScoreEntry> scores = GetScores();
 
-            List<ScoreEntry> scores = this.clientsTargetInformation.Select(p => new ScoreEntry(p.Key.PlayerName, p.Key.Score)).OrderByDescending(p => p.Score).ToList();
-            ScoresResponseMessage responseMessage = new ScoresResponseMessage()
+            if (this.serverTargetInformation == null)
             {
-                Scores = scores
-            };
+                ScoresResponseMessage responseMessage = new ScoresResponseMessage()
+                {
+                    Scores = scores
+                };
 
-            this.SendClientMessage(responseMessage, sender);
-            //clientDataManager.WriteData(responseMessage, sender);
+                this.clientDataManager.WriteData(responseMessage, sender);
+            }
+            else
+            {
+                if (this.isActive)
+                {
+                    ServerScoreRequestMessage serverRequestMessage = new ServerScoreRequestMessage() { RequestSender = sender};
+                    this.serverDataManager.WriteData(serverRequestMessage, this.serverTargetInformation.Item2);
+                }
+                else
+                {
+                    ServerScoreResponseMessage serverResponseMessage = new ServerScoreResponseMessage()
+                    {
+                        RequestSender = sender,
+                        Scores = scores
+                    };
+                    this.serverDataManager.WriteData(serverResponseMessage, this.serverTargetInformation.Item2);
+                }
+            }
+
+        }
+
+        private List<ScoreEntry> GetScores()
+        {
+            return this.clientsTargetInformation.Select(p => new ScoreEntry(p.Key.PlayerName, p.Key.Score)).OrderByDescending(p => p.Score).ToList();
         }
 
         private void SubmitAnswer(object sender, MessageEventArgs e)
@@ -283,8 +375,44 @@ namespace Server.Application
             };
 
             this.SendClientMessage(wonMessage, this.clientsTargetInformation[client]);
-            //this.clientDataManager.WriteData(wonMessage, this.clientsTargetInformation[client]);
-            this.LogText(string.Format("{0} won.", client.PlayerName));
+            var message = string.Format("{0} won.", client.PlayerName);
+            this.LogText(message);
+            this.SendBroadcastText(message);
+        }
+
+        private void SendBroadcastText(string text)
+        {
+            BroadcastMessage broadcastMessage = new BroadcastMessage() { Text = text };
+
+            if (this.serverTargetInformation == null)
+            {
+                foreach (var item in this.clientsTargetInformation)
+                {
+                    this.clientDataManager.WriteData(broadcastMessage, item.Value);
+                }
+            }
+            else
+            {
+                if (this.isActive)
+                {
+                    BroadcastRequestMessage broadcastRequestMessage = new BroadcastRequestMessage()
+                    {
+                        MessageToBroadcast = broadcastMessage
+                    };
+
+                    this.serverDataManager.WriteData(broadcastRequestMessage, this.serverTargetInformation.Item2);
+                }
+                else
+                {
+                    BroadcastResponseMessage broadcastResponseMessage = new BroadcastResponseMessage()
+                    {
+                        ClientsInformation = this.clientsTargetInformation.Select(p => p.Value).ToList(),
+                        MessageToBroadcast = broadcastMessage
+                    };
+
+                    this.serverDataManager.WriteData(broadcastResponseMessage, this.serverTargetInformation.Item2);
+                }
+            }
         }
 
         private void ClientLost(object sender, EventArgs e)
@@ -296,8 +424,9 @@ namespace Server.Application
             };
 
             this.SendClientMessage(lostMessage, this.clientsTargetInformation[client]);
-            //this.clientDataManager.WriteData(lostMessage, this.clientsTargetInformation[client]);
-            this.LogText(string.Format("{0} lost.", client.PlayerName));
+            var message = string.Format("{0} lost.", client.PlayerName);
+            this.LogText(message);
+            this.SendBroadcastText(message);
         }
 
         private void LogText(string loggingText)
@@ -399,7 +528,8 @@ namespace Server.Application
             }
             else
             {
-                ForwardingMessage forwardingMessage = new ForwardingMessage() { InnerMessage = message, Target = target };
+                this.LogText(string.Format("{0} sent message to {1}", this.Configuration.ServerName, this.serverTargetInformation.Item1));
+                ForwardingMessage forwardingMessage = new ForwardingMessage() { InnerMessage = message, Target = target, TargetName = this.GetClientFromSenderInformation(target).PlayerName};
                 this.serverDataManager.WriteData(forwardingMessage, this.serverTargetInformation.Item2);
             }
         }

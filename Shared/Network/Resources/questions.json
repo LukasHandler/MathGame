@@ -3,36 +3,36 @@
       "ID": "1",
       "Question": "2+2",
       "Answer": "4",
-      "Time": "3"
+      "Time": "400"
     },
     {
       "ID": "2",
       "Question": "2+3",
       "Answer": "5",
-      "Time": "3"
+      "Time": "400"
     },
     {
       "ID": "3",
       "Question": "4+3",
       "Answer": "7",
-      "Time": "3"
+      "Time": "400"
     },
     {
       "ID": "4",
       "Question": "5+3",
       "Answer": "8",
-      "Time": "3"
+      "Time": "400"
     },
     {
       "ID": "5",
       "Question": "9+3",
       "Answer": "12",
-      "Time": "3"
+      "Time": "400"
     },
     {
       "ID": "6",
       "Question": "2*3",
       "Answer": "6",
-      "Time": "3"
+      "Time": "400"
     }
 ]

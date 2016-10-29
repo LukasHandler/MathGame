@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Shared.Data;
 using Shared.Data.Managers;
 using Shared.Data.EventArguments;
+using Client.Application.EventArguments;
 
 namespace Client.Application
 {
@@ -24,6 +25,8 @@ namespace Client.Application
         public EventHandler<GameFinishedEventArgs> OnGameLost;
 
         public EventHandler<ScoresEventArgs> OnScoresReceived;
+
+        public EventHandler<BroadcastEventArgs> OnBroadcastTextReceived;
 
         private UdpClientManager networkManager;
 
@@ -88,6 +91,14 @@ namespace Client.Application
                 if (this.OnScoresReceived != null)
                 {
                     this.OnScoresReceived(this, new ScoresEventArgs(((ScoresResponseMessage)args.MessageContent).Scores));
+                }
+            };
+
+            messageProcessor.OnBroadcastMessage += delegate (object sender, MessageEventArgs args)
+            {
+                if (this.OnBroadcastTextReceived != null)
+                {
+                    this.OnBroadcastTextReceived(this, new BroadcastEventArgs(((BroadcastMessage)args.MessageContent).Text));
                 }
             };
         }

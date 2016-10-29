@@ -9,6 +9,16 @@ namespace Shared.Data
 {
     public interface IMessageVisitor
     {
+        void ProcessMessage(BroadcastRequestMessage message);
+
+        void ProcessMessage(BroadcastResponseMessage message);
+
+        void ProcessMessage(BroadcastMessage message);
+
+        void ProcessMessage(ServerScoreRequestMessage message);
+
+        void ProcessMessage(ServerScoreResponseMessage message);
+
         void ProcessMessage(AnswerMessage message);
 
         void ProcessMessage(DisconnectServerMessage message);

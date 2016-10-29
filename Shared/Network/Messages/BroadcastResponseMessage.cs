@@ -7,13 +7,11 @@ using System.Threading.Tasks;
 namespace Shared.Data.Messages
 {
     [Serializable]
-    public class ForwardingMessage : Message
+    public class BroadcastResponseMessage : Message
     {
-        public Message InnerMessage { get; set; }
+        public BroadcastMessage MessageToBroadcast { get; set; }
 
-        public object Target { get; set; }
-
-        public string TargetName { get; set; }
+        public List<object> ClientsInformation { get; set; }
 
         public override void ProcessMessage(IMessageVisitor processor)
         {

@@ -1,4 +1,5 @@
 ﻿using Client.Application;
+using Client.Application.EventArguments;
 using Client.Presentation.Utilities;
 using Shared.Data;
 using Shared.Data.EventArguments;
@@ -86,6 +87,11 @@ namespace Client.Presentation.ViewModels
             networkService.OnScoresReceived += delegate (object sender, ScoresEventArgs args)
             {
                 this.Scores = args.Scores;
+            };
+
+            networkService.OnBroadcastTextReceived += delegate (object sender, BroadcastEventArgs args)
+            {
+                this.Questions.Add(args.BroadcastText);
             };
         }
 

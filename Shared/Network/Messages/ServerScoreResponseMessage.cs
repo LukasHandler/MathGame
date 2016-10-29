@@ -7,13 +7,12 @@ using System.Threading.Tasks;
 namespace Shared.Data.Messages
 {
     [Serializable]
-    public class ForwardingMessage : Message
+    public class ServerScoreResponseMessage : Message
     {
-        public Message InnerMessage { get; set; }
+        public object RequestSender { get; set; }
 
-        public object Target { get; set; }
+        public List<ScoreEntry> Scores { get; set; }
 
-        public string TargetName { get; set; }
 
         public override void ProcessMessage(IMessageVisitor processor)
         {

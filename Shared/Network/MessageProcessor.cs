@@ -53,6 +53,31 @@ namespace Shared.Data
 
         public EventHandler<MessageEventArgs> OnForwardingMessage;
 
+        public EventHandler<MessageEventArgs> OnServerScoreRequestMessage;
+
+        public EventHandler<MessageEventArgs> OnServerScoreResponseMessage;
+
+        public EventHandler<MessageEventArgs> OnBroadcastMessage;
+
+        public EventHandler<MessageEventArgs> OnServerClientsRequestMessage;
+
+        public EventHandler<MessageEventArgs> OnServerClientsResponseMessage;
+
+        public void ProcessMessage(BroadcastMessage message)
+        {
+            this.RaiseEvent(this.OnBroadcastMessage, message);
+        }
+
+        public void ProcessMessage(BroadcastRequestMessage message)
+        {
+            this.RaiseEvent(this.OnServerClientsRequestMessage, message);
+        }
+
+        public void ProcessMessage(BroadcastResponseMessage message)
+        {
+            this.RaiseEvent(this.OnServerClientsResponseMessage, message);
+        }
+
         public void ProcessMessage(ConnectionAcceptServerMessage message)
         {
             RaiseEvent(this.OnConnectionAcceptedServer, message);
@@ -131,6 +156,16 @@ namespace Shared.Data
         public void ProcessMessage(ForwardingMessage message)
         {
             this.RaiseEvent(OnForwardingMessage, message);
+        }
+
+        public void ProcessMessage(ServerScoreResponseMessage message)
+        {
+            this.RaiseEvent(this.OnServerScoreResponseMessage, message);
+        }
+
+        public void ProcessMessage(ServerScoreRequestMessage message)
+        {
+            this.RaiseEvent(this.OnServerScoreRequestMessage, message);
         }
 
         public void RaiseEvent(EventHandler<MessageEventArgs> eventHandler, Message message)
