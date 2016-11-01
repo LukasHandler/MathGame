@@ -40,7 +40,16 @@ namespace Shared.Data.Managers
 
                 callback = delegate (IAsyncResult result)
                 {
-                    int bytesRead = stream.EndRead(result);
+                    int bytesRead;
+
+                    try
+                    {
+                        bytesRead = stream.EndRead(result);
+                    }
+                    catch (System.IO.IOException)
+                    {
+                        return;
+                    }
 
                     //Copy result into new buffer so we can read as soon as possible again - otherwise some messages get lost
                     byte[] toConvertBuffer = new byte[bytesRead];
@@ -59,11 +68,6 @@ namespace Shared.Data.Managers
 
                 stream.BeginRead(buffer, 0, buffer.Length, callback, null);
             }
-
-            //if (data.SenderInformation == null)
-            //{
-            //    data.SenderInformation = client.Client.LocalEndPoint;
-            //}
 
             byte[] bytes = MessageByteConverter.ConvertToBytes(data);
             stream.Write(bytes, 0, bytes.Length);

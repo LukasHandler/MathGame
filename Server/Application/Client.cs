@@ -1,12 +1,14 @@
-﻿using System;
+﻿using Shared.Data;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Server.Application
 {
-    public class Client
+    public class Client : GameMember
     {
         private int score;
 
@@ -14,7 +16,7 @@ namespace Server.Application
 
         private int minScore;
 
-        public string PlayerName { get; set; }
+        public string Name { get; set; }
 
         public int Score
         {
@@ -47,12 +49,22 @@ namespace Server.Application
 
         public EventHandler MaxScoreReached;
 
-        public Client(string playerName, int minScore, int maxScore)
+        public Timer QuestionTimer { get; set; }
+
+        public MathQuestion Question { get; set; }
+
+        public Client(string name, int minScore, int maxScore, object targetInformation) : base(targetInformation)
         {
+            this.TargetInformation = targetInformation;
             this.minScore = minScore;
             this.maxScore = maxScore;
-            this.PlayerName = playerName;
+            this.Name = name;
             this.Score = 0;
+        }
+
+        public override string ToString()
+        {
+            return this.Name;
         }
     }
 }
