@@ -45,7 +45,7 @@ namespace Shared.Data
 
         public EventHandler<MessageEventArgs> OnDisconnect;
 
-        public EventHandler<MessageEventArgs> OnDisconnectServer;
+        public EventHandler<DisconnectServerMessageEventArgs> OnDisconnectServer;
 
         public EventHandler<LoggingMessageEventArgs> OnLoggingMessage;
 
@@ -137,7 +137,7 @@ namespace Shared.Data
 
         public void ProcessMessage(DisconnectServerMessage message)
         {
-            this.OnDisconnectServer?.Invoke(this.senderInformation[message], new MessageEventArgs(message));
+            this.OnDisconnectServer?.Invoke(this.senderInformation[message], new DisconnectServerMessageEventArgs(message));
         }
 
         public void ProcessMessage(LoggingMessage message)

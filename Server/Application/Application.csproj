@@ -43,7 +43,7 @@
     <Compile Include="Client.cs" />
     <Compile Include="GameMember.cs" />
     <Compile Include="Monitor.cs" />
-    <Compile Include="NetworkService.cs" />
+    <Compile Include="DataService.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Server.cs" />
     <Compile Include="ServerConfiguration.cs" />

@@ -14,7 +14,7 @@ using System.Collections.Concurrent;
 
 namespace Server.Application
 {
-    public class NetworkService
+    public class DataService
     {
         private bool isActive;
 
@@ -36,7 +36,7 @@ namespace Server.Application
 
         private Server otherServer;
 
-        public NetworkService(ServerConfiguration configuration)
+        public DataService(ServerConfiguration configuration)
         {
             this.startTime = DateTime.Now;
             this.isActive = true;
@@ -139,10 +139,15 @@ namespace Server.Application
             this.clientDataManager.WriteData(forwardingMessage.InnerMessage, forwardingMessage.Target);
         }
 
-        private void DisconnectServer(object sender, MessageEventArgs e)
+        private void DisconnectServer(object sender, DisconnectServerMessageEventArgs e)
         {
-            this.isActive = true;
-            this.otherServer = null;
+            this.serverDataManager.Unregister(sender);
+
+            if (e.Message.LastConnection)
+            {
+                this.isActive = true;
+                this.otherServer = null;
+            }
         }
 
         private void ConnectionAcceptedServer(object sender, ConnectionAcceptedServerMessageEventArgs e)
@@ -167,11 +172,15 @@ namespace Server.Application
             this.serverDataManager.WriteData(connectionRequest, server);
         }
 
-        public void DisconnectFromServer()
+        public void DisconnectFromServer(object server, int connectionCount)
         {
-            DisconnectServerMessage disconnect = new DisconnectServerMessage();
-            this.serverDataManager.WriteData(disconnect, this.otherServer.TargetInformation);
-            this.serverDataManager.Unregister(this.otherServer.TargetInformation);
+            DisconnectServerMessage disconnect = new DisconnectServerMessage()
+            {
+                LastConnection = connectionCount == 1 ? true : false
+            };
+
+            this.serverDataManager.WriteData(disconnect, server);
+            this.serverDataManager.Unregister(server);
         }
 
         private void ConnectionRequestServer(object sender, ConnectionRequestServerMessageEventArgs e)

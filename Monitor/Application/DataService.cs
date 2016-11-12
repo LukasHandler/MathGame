@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace Monitor.Application
 {
-    public static class NetworkService
+    public static class DataService
     {
         private static MessageProcessor messageProcessor;
 
@@ -24,7 +24,7 @@ namespace Monitor.Application
         private static bool isConnected = false;
 
 
-        static NetworkService()
+        static DataService()
         {
             messageProcessor = new MessageProcessor();
             messageProcessor.OnConnectionAccepted += ConnectionAccepted;

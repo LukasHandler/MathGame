@@ -13,6 +13,10 @@ namespace Server.Presentation
 {
     class Program
     {
+        private static int connectionCount = 0;
+
+        private static ServerConfiguration configuration;
+
         [STAThread]
         static void Main(string[] args)
         {
@@ -21,7 +25,6 @@ namespace Server.Presentation
             selectConfigFile.Filter = "JSON files|*.json";
             selectConfigFile.InitialDirectory = AppDomain.CurrentDomain.BaseDirectory;
 
-            ServerConfiguration configuration;
             //string jsonText = string.Empty;
 
             //using (StreamReader fileReader = new StreamReader(AppDomain.CurrentDomain.BaseDirectory + "server1.json"))
@@ -35,51 +38,100 @@ namespace Server.Presentation
             {
                 string jsonText = string.Empty;
 
-                using (StreamReader fileReader = new StreamReader(selectConfigFile.FileName))
+                try
                 {
-                    jsonText = fileReader.ReadToEnd();
+                    using (StreamReader fileReader = new StreamReader(selectConfigFile.FileName))
+                    {
+                        jsonText = fileReader.ReadToEnd();
+                    }
+
+                    configuration = JsonConvert.DeserializeObject<ServerConfiguration>(jsonText);
+                }
+                catch(Exception)
+                {
+                    CreateDefaultConfiguration();
                 }
 
-                configuration = JsonConvert.DeserializeObject<ServerConfiguration>(jsonText);
             }
             else
             {
-                Random randomGenerator = new Random();
-
-                configuration = new ServerConfiguration()
-                {
-                    ServerName = "server" + randomGenerator.Next(1, 10),
-                    ClientPort = 4700 + randomGenerator.Next(1, 100),
-                    MonitorPort = 4800 + randomGenerator.Next(1, 100),
-                    ServerPort = 4900 + randomGenerator.Next(1, 100)
-                };
+                CreateDefaultConfiguration();
             }
 
-            NetworkService serverService = new NetworkService(configuration);
+            DataService serverService = new DataService(configuration);
             serverService.OnLoggingMessage += PrintLoggingMessage;
 
-            Console.WriteLine("Started server");
-            Console.WriteLine("Name: " + configuration.ServerName);
-            Console.WriteLine("Client Port: " + configuration.ClientPort);
-            Console.WriteLine("Monitor Port: " + configuration.MonitorPort);
-            Console.WriteLine("Server Port: " + configuration.ServerPort);
-            Console.WriteLine("___________________________________________");
+            PrintServerInformation();
 
             while (true)
             {
                 var serverEndPoint = ConsoleInput.GetIPEndPoint("Server");
-                serverService.RegisterToServer(serverEndPoint);
-
                 string input = string.Empty;
 
                 do
                 {
-                    Console.Write("> ");
-                    input = Console.ReadLine();
-                } while (input != "disconnect");
+                    Console.WriteLine("Server-Connections: {0}. connect/disconnect/exit", connectionCount);
 
-                serverService.DisconnectFromServer();
+                    Console.Write("> ");
+                    input = Console.ReadLine().ToLower();
+
+                    if (input == "connect")
+                    {
+                        if (connectionCount == int.MaxValue)
+                        {
+                            Console.WriteLine("Error, can't create more connections");
+                        }
+
+                        serverService.RegisterToServer(serverEndPoint);
+                        connectionCount++;
+
+                    }
+                    else if (input == "disconnect")
+                    {
+                        if (connectionCount == 0)
+                        {
+                            Console.WriteLine("Error, there is no connection to disconnect from");
+                        }
+                        else
+                        {
+                            serverService.DisconnectFromServer(serverEndPoint, connectionCount);
+                            connectionCount--;
+                        }
+                    }
+
+                } while (input != "exit");
+
+                while(connectionCount > 0)
+                {
+                    serverService.DisconnectFromServer(serverEndPoint, connectionCount);
+                    connectionCount--;
+                }
             }
+        }
+
+        private static void CreateDefaultConfiguration()
+        {
+            Random randomGenerator = new Random();
+
+            configuration = new ServerConfiguration()
+            {
+                ServerName = "server" + randomGenerator.Next(1, 10),
+                ClientPort = 4700 + randomGenerator.Next(1, 100),
+                MonitorPort = 4800 + randomGenerator.Next(1, 100),
+                ServerPort = 4900 + randomGenerator.Next(1, 100),
+                MaxScore = randomGenerator.Next(10, 100),
+                MinScore = randomGenerator.Next(-100, -5)
+            };
+        }
+
+        private static void PrintServerInformation()
+        {
+            Console.WriteLine("Name: {0}, ClientPort: {1}, MonitorPort: {2}, ServerPort: {3}",
+                configuration.ServerName,
+                configuration.ClientPort,
+                configuration.MonitorPort,
+                configuration.ServerPort);
+            Console.WriteLine("------------------------------------------------------------------------------");
         }
 
         private static void PrintLoggingMessage(object sender, LoggingEventArgs e)

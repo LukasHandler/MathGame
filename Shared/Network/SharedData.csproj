@@ -53,6 +53,7 @@
     <Compile Include="EventArguments\ConnectionRequestClientMessageEventArgs.cs" />
     <Compile Include="EventArguments\ConnectionRequestMonitorMessageEventArgs.cs" />
     <Compile Include="EventArguments\ConnectionRequestServerMessageEventArgs.cs" />
+    <Compile Include="EventArguments\DisconnectServerMessageEventArgs.cs" />
     <Compile Include="EventArguments\ForwardingMessageEventArgs.cs" />
     <Compile Include="EventArguments\GameLostMessageEventArgs.cs" />
     <Compile Include="EventArguments\GameWonMessageEventArgs.cs" />
