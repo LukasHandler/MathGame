@@ -53,5 +53,15 @@ namespace Shared.Data.Managers
                 OnDataReceived(senderIp, new MessageEventArgs(receivedMessage));
             }
         }
+
+        public void Register(object target)
+        {
+            
+        }
+
+        public void Unregister(object target)
+        {
+            
+        }
     }
 }

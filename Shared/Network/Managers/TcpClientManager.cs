@@ -10,23 +10,34 @@ using System.Threading.Tasks;
 
 namespace Shared.Data.Managers
 {
-    public class TcpClientManager : IDataManager
+    public class TcpClientManager : TcpManager
     {
         private NetworkStream stream;
 
         private TcpClient client;
 
-        public event EventHandler<MessageEventArgs> OnDataReceived;
+        protected override void SendData(Message data, IPEndPoint target)
+        {
+            if (this.stream != null)
+            {
+                byte[] bytes = MessageByteConverter.ConvertToBytes(data);
+                stream.Write(bytes, 0, bytes.Length);
+            }
+        }
 
-        public void WriteData(Message data, object target)
+        protected override void Disconnect(IPEndPoint target)
+        {
+            stream.Dispose();
+        }
+
+        protected override void Connect(IPEndPoint target)
         {
             if (stream == null)
             {
-                //TcpClient client = new TcpClient(localEndPoint);
                 client = new TcpClient();
                 try
                 {
-                    client.Connect((IPEndPoint)target);
+                    client.Connect(target);
                 }
                 catch (Exception)
                 {
@@ -34,43 +45,8 @@ namespace Shared.Data.Managers
                 }
 
                 stream = client.GetStream();
-
-                AsyncCallback callback = null;
-                byte[] buffer = new byte[10000];
-
-                callback = delegate (IAsyncResult result)
-                {
-                    int bytesRead;
-
-                    try
-                    {
-                        bytesRead = stream.EndRead(result);
-                    }
-                    catch (System.IO.IOException)
-                    {
-                        return;
-                    }
-
-                    //Copy result into new buffer so we can read as soon as possible again - otherwise some messages get lost
-                    byte[] toConvertBuffer = new byte[bytesRead];
-                    Array.Copy(buffer, toConvertBuffer, bytesRead);
-
-                    buffer = new byte[10000];
-                    stream.BeginRead(buffer, 0, buffer.Length, callback, null);
-
-                    Message receivedMessage = MessageByteConverter.ConvertToMessage(toConvertBuffer);
-
-                    if (OnDataReceived != null)
-                    {
-                        OnDataReceived(target, new MessageEventArgs(receivedMessage));
-                    }
-                };
-
-                stream.BeginRead(buffer, 0, buffer.Length, callback, null);
+                this.StartReading(stream, target);
             }
-
-            byte[] bytes = MessageByteConverter.ConvertToBytes(data);
-            stream.Write(bytes, 0, bytes.Length);
         }
     }
 }

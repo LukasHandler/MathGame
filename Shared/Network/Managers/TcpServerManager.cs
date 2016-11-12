@@ -1,28 +1,24 @@
-﻿using Shared.Data.EventArguments;
-using Shared.Data.Messages;
-using System;
+﻿using Shared.Data.Messages;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
-using System.Threading.Tasks;
+using System.Linq;
+using System;
 
 namespace Shared.Data.Managers
 {
-    public class TcpServerManager : IDataManager
+    public class TcpServerManager : TcpManager
     {
-        private Dictionary<IPEndPoint, NetworkStream> streams;
+        private Dictionary<IPEndPoint, List<TcpClient>> clients;
 
         private TcpListener tcpListener;
 
-        //private TcpClient tcpClient;
-
         private IPEndPoint localEndPoint;
 
-        private void Init()
+        public TcpServerManager(int port)
         {
-            this.streams = new Dictionary<IPEndPoint, NetworkStream>();
+            this.localEndPoint = new IPEndPoint(IPAddress.Any, port);
+            this.clients = new Dictionary<IPEndPoint, List<TcpClient>>();
 
             tcpListener = new TcpListener(localEndPoint);
 
@@ -30,91 +26,67 @@ namespace Shared.Data.Managers
             AcceptClients();
         }
 
-        public TcpServerManager(int port)
-        {
-            this.localEndPoint = new IPEndPoint(IPAddress.Any, port);
-            Init();
-        }
-
         private async void AcceptClients()
         {
             while (true)
             {
                 var client = await tcpListener.AcceptTcpClientAsync();
-                NetworkStream stream = client.GetStream();
 
-                IPEndPoint clientEndPoint = ((IPEndPoint)client.Client.RemoteEndPoint);
+                AddClient(client);
 
-                this.streams.Add(clientEndPoint, stream);
-
-                AsyncCallback callback = null;
-                byte[] buffer = new byte[10000];
-
-                callback = delegate (IAsyncResult result)
-                {
-                    try
-                    {
-                        int bytesRead = stream.EndRead(result);
-
-                        //Copy result into new buffer so we can read as soon as possible again - otherwise some messages get lost
-                        byte[] toConvertBuffer = new byte[bytesRead];
-                        Array.Copy(buffer, toConvertBuffer, bytesRead);
-
-                        buffer = new byte[10000];
-                        stream.BeginRead(buffer, 0, buffer.Length, callback, clientEndPoint);
-
-                        Message receivedMessage = MessageByteConverter.ConvertToMessage(toConvertBuffer);
-
-                        if (OnDataReceived != null)
-                        {
-                            OnDataReceived(clientEndPoint, new MessageEventArgs(receivedMessage));
-                        }
-                    }
-                    catch (System.IO.IOException)
-                    {
-                        return;
-                    }
-                };
-
-                stream.BeginRead(buffer, 0, buffer.Length, callback, clientEndPoint);
+                this.StartReading(client.GetStream(), (IPEndPoint)client.Client.RemoteEndPoint);
             }
         }
 
-        public event EventHandler<MessageEventArgs> OnDataReceived;
-
-        public void WriteData(Message data, object target)
+        private void AddClient(TcpClient client)
         {
-            var targetEndPoint = (IPEndPoint)target;
+            var clientEndPoint = (IPEndPoint)client.Client.RemoteEndPoint;
 
-            //if (data.SenderInformation == null)
-            //{
-            //    //Returns 0.0.0.0 -> so the ip's it listens to.
-            //    data.SenderInformation = tcpListener.LocalEndpoint;
-            //}
+            if (this.clients.ContainsKey(clientEndPoint))
+            {
+                this.clients[clientEndPoint].Add(client);
+            }
+            else
+            {
+                this.clients.Add(clientEndPoint, new List<TcpClient>() { client });
+            }
+        }
 
+        protected override void SendData(Message data, IPEndPoint target)
+        {
             byte[] bytes = MessageByteConverter.ConvertToBytes(data);
 
-            //if (this.streams.Count == 0)
-            //{
-            //    if (this.tcpClient == null)
-            //    {
-            //        tcpListener.Stop();
-            //        tcpClient = new TcpClient(this.localEndPoint);
-            //        tcpClient.Connect(targetEndPoint);
-            //    }
-
-            //    tcpClient.GetStream().Write(bytes, 0, bytes.Length);
-
-            //    if (data is Disco)
-            //}
-            //else
-            //{
-
-            if (this.streams.ContainsKey(targetEndPoint))
+            if (this.clients.ContainsKey(target) && this.clients[target].Count > 0)
             {
-                this.streams[targetEndPoint].Write(bytes, 0, bytes.Length);
+                this.clients[target].First().GetStream().Write(bytes, 0, bytes.Length);
             }
-            //}
+        }
+
+        protected override void Disconnect(IPEndPoint target)
+        {
+            if (this.clients.ContainsKey(target))
+            {
+                if (this.clients[target].Count > 0)
+                {
+                    this.clients[target].RemoveAt(0);
+                }
+            }
+        }
+
+        protected override void Connect(IPEndPoint target)
+        {
+            TcpClient client = new TcpClient();
+
+            try
+            {
+                client.Connect(target);
+                this.AddClient(client);
+                this.StartReading(client.GetStream(), target);
+            }
+            catch (Exception)
+            {
+                return;
+            }
         }
     }
 }

@@ -12,7 +12,7 @@ using Client.Application.EventArguments;
 
 namespace Client.Application
 {
-    public class NetworkService
+    public class DataService
     {
         public EventHandler OnConnectionAccepted;
 
@@ -28,7 +28,7 @@ namespace Client.Application
 
         public EventHandler<BroadcastEventArgs> OnBroadcastTextReceived;
 
-        private UdpClientManager networkManager;
+        private IDataManager networkManager;
 
         private MessageProcessor messageProcessor;
 
@@ -38,7 +38,7 @@ namespace Client.Application
 
         private string clientName;
 
-        public NetworkService()
+        public DataService()
         {
             messageProcessor = new MessageProcessor();
 
@@ -61,44 +61,44 @@ namespace Client.Application
                 }
             };
 
-            messageProcessor.OnQuestion += delegate (object sender, MessageEventArgs args)
+            messageProcessor.OnQuestion += delegate (object sender, QuestionMessageEventArgs args)
             {
                 if (OnQuestionReceived != null)
                 {
-                    QuestionMessage questionMessage = args.MessageContent as QuestionMessage;
+                    QuestionMessage questionMessage = args.Message;
                     this.OnQuestionReceived(this, new QuestionEventArgs(questionMessage.QuestionText, questionMessage.Time, questionMessage.Score));
                 }
             };
 
-            messageProcessor.OnGameWonMessage += delegate (object sender, MessageEventArgs args)
+            messageProcessor.OnGameWonMessage += delegate (object sender, GameWonMessageEventArgs args)
             {
                 if (this.OnGameWon != null)
                 {
-                    this.OnGameWon(this, new GameFinishedEventArgs((args.MessageContent as GameWonMessage).Score));
+                    this.OnGameWon(this, new GameFinishedEventArgs(args.Message.Score));
                 }
             };
 
-            messageProcessor.OnGameLostMessage += delegate (object sender, MessageEventArgs args)
+            messageProcessor.OnGameLostMessage += delegate (object sender, GameLostMessageEventArgs args)
             {
                 if (this.OnGameLost != null)
                 {
-                    this.OnGameLost(this, new GameFinishedEventArgs((args.MessageContent as GameLostMessage).Score));
+                    this.OnGameLost(this, new GameFinishedEventArgs(args.Message.Score));
                 }
             };
 
-            messageProcessor.OnScoreResponse += delegate (object sender, MessageEventArgs args)
+            messageProcessor.OnScoreResponse += delegate (object sender, ScoresResponseMessageEventArgs args)
             {
                 if (this.OnScoresReceived != null)
                 {
-                    this.OnScoresReceived(this, new ScoresEventArgs(((ScoresResponseMessage)args.MessageContent).Scores));
+                    this.OnScoresReceived(this, new ScoresEventArgs(args.Message.Scores));
                 }
             };
 
-            messageProcessor.OnBroadcastMessage += delegate (object sender, MessageEventArgs args)
+            messageProcessor.OnBroadcastMessage += delegate (object sender, BroadcastMessageEventArgs args)
             {
                 if (this.OnBroadcastTextReceived != null)
                 {
-                    this.OnBroadcastTextReceived(this, new BroadcastEventArgs(((BroadcastMessage)args.MessageContent).Text));
+                    this.OnBroadcastTextReceived(this, new BroadcastEventArgs((args.Message).Text));
                 }
             };
         }

@@ -45,14 +45,28 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ConsoleInput.cs" />
-    <Compile Include="EventArguments\GameFinishedEventArgs.cs" />
-    <Compile Include="EventArguments\QuestionEventArgs.cs" />
-    <Compile Include="EventArguments\ScoresEventArgs.cs" />
+    <Compile Include="EventArguments\AnswerMessageEventArgs.cs" />
+    <Compile Include="EventArguments\BroadcastMessageEventArgs.cs" />
+    <Compile Include="EventArguments\BroadcastRequestMessageEventArgs.cs" />
+    <Compile Include="EventArguments\BroadcastResponseMessageEventArgs.cs" />
+    <Compile Include="EventArguments\ConnectionAcceptedServerMessageEventArgs.cs" />
+    <Compile Include="EventArguments\ConnectionRequestClientMessageEventArgs.cs" />
+    <Compile Include="EventArguments\ConnectionRequestMonitorMessageEventArgs.cs" />
+    <Compile Include="EventArguments\ConnectionRequestServerMessageEventArgs.cs" />
+    <Compile Include="EventArguments\ForwardingMessageEventArgs.cs" />
+    <Compile Include="EventArguments\GameLostMessageEventArgs.cs" />
+    <Compile Include="EventArguments\GameWonMessageEventArgs.cs" />
+    <Compile Include="EventArguments\LoggingMessageEventArgs.cs" />
+    <Compile Include="EventArguments\QuestionMessageEventArgs.cs" />
+    <Compile Include="EventArguments\ScoresResponseMessageEventArgs.cs" />
+    <Compile Include="EventArguments\ServerScoreRequestMessageEventArgs.cs" />
+    <Compile Include="EventArguments\ServerScoreResponseMessageEventArgs.cs" />
     <Compile Include="IDataManager.cs" />
     <Compile Include="IMessageVisitor.cs" />
     <Compile Include="LoggingEventArgs.cs" />
     <Compile Include="Managers\TcpClientManager.cs" />
     <Compile Include="Managers\TcpClientServerManager.cs" />
+    <Compile Include="Managers\TcpManager.cs" />
     <Compile Include="Managers\TcpServerManager.cs" />
     <Compile Include="Managers\UdpServerManager.cs" />
     <Compile Include="Managers\UdpClientManager.cs" />
@@ -74,7 +88,6 @@
     <Compile Include="Messages\ConnectionAcceptMessage.cs" />
     <Compile Include="Messages\ConnectionDeniedMessage.cs" />
     <Compile Include="Messages\ConnectionRequestClientMessage.cs" />
-    <Compile Include="Messages\RedirectedMessage.cs" />
     <Compile Include="Messages\ScoresRequestMessage.cs" />
     <Compile Include="Messages\ScoresResponseMessage.cs" />
     <Compile Include="Messages\Message.cs" />

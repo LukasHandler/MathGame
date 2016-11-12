@@ -23,7 +23,7 @@ namespace Client.Presentation.ViewModels
     {
         private Thread timerThread;
 
-        private NetworkService networkService;
+        private DataService networkService;
 
         private readonly object questionsLock = new object();
 
@@ -35,7 +35,7 @@ namespace Client.Presentation.ViewModels
             this.Questions = new ObservableCollection<string>();
             this.Scores = new List<ScoreEntry>();
 
-            networkService = new NetworkService();
+            networkService = new DataService();
 
             networkService.OnConnectionAccepted += delegate (object sender, EventArgs args)
             {

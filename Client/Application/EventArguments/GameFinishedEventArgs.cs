@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Shared.Data.EventArguments
+namespace Client.Application.EventArguments
 {
     public class GameFinishedEventArgs : EventArgs
     {

@@ -13,5 +13,9 @@ namespace Shared.Data
         event EventHandler<MessageEventArgs> OnDataReceived;
 
         void WriteData(Message data, object target);
+
+        void Register(object target);
+
+        void Unregister(object target);
     }
 }

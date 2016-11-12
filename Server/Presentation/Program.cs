@@ -68,7 +68,7 @@ namespace Server.Presentation
             while (true)
             {
                 var serverEndPoint = ConsoleInput.GetIPEndPoint("Server");
-                serverService.ConnectToServer(serverEndPoint);
+                serverService.RegisterToServer(serverEndPoint);
 
                 string input = string.Empty;
 

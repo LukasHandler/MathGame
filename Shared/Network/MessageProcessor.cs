@@ -21,164 +21,153 @@ namespace Shared.Data
             locker = new object();
         }
 
-        public EventHandler<MessageEventArgs> OnConnectionRequestClient;
+        public delegate void ParameterlessDelegate();
 
-        public EventHandler<MessageEventArgs> OnConnectionRequestServer;
+        public EventHandler<ConnectionRequestClientMessageEventArgs> OnConnectionRequestClient;
+
+        public EventHandler<ConnectionRequestServerMessageEventArgs> OnConnectionRequestServer;
 
         public EventHandler<MessageEventArgs> OnConnectionRequestMonitor;
 
-        public EventHandler<MessageEventArgs> OnConnectionAcceptedServer;
+        public EventHandler<ConnectionAcceptedServerMessageEventArgs> OnConnectionAcceptedServer;
 
         public EventHandler<MessageEventArgs> OnScoreRequest;
 
-        public EventHandler<MessageEventArgs> OnScoreResponse;
+        public EventHandler<ScoresResponseMessageEventArgs> OnScoreResponse;
 
-        public EventHandler<MessageEventArgs> OnAnswer;
+        public EventHandler<AnswerMessageEventArgs> OnAnswer;
 
         public EventHandler<MessageEventArgs> OnConnectionDenied;
 
         public EventHandler<MessageEventArgs> OnConnectionAccepted;
 
-        public EventHandler<MessageEventArgs> OnQuestion;
+        public EventHandler<QuestionMessageEventArgs> OnQuestion;
 
         public EventHandler<MessageEventArgs> OnDisconnect;
 
         public EventHandler<MessageEventArgs> OnDisconnectServer;
 
-        public EventHandler<MessageEventArgs> OnLoggingMessage;
+        public EventHandler<LoggingMessageEventArgs> OnLoggingMessage;
 
-        public EventHandler<MessageEventArgs> OnGameWonMessage;
+        public EventHandler<GameWonMessageEventArgs> OnGameWonMessage;
 
-        public EventHandler<MessageEventArgs> OnGameLostMessage;
+        public EventHandler<GameLostMessageEventArgs> OnGameLostMessage;
 
-        public EventHandler<MessageEventArgs> OnForwardingMessage;
+        public EventHandler<ForwardingMessageEventArgs> OnForwardingMessage;
 
-        public EventHandler<MessageEventArgs> OnServerScoreRequestMessage;
+        public EventHandler<ServerScoreRequestMessageEventArgs> OnServerScoreRequestMessage;
 
-        public EventHandler<MessageEventArgs> OnServerScoreResponseMessage;
+        public EventHandler<ServerScoreResponseMessageEventArgs> OnServerScoreResponseMessage;
 
-        public EventHandler<MessageEventArgs> OnBroadcastMessage;
+        public EventHandler<BroadcastMessageEventArgs> OnBroadcastMessage;
 
-        public EventHandler<MessageEventArgs> OnServerClientsRequestMessage;
+        public EventHandler<BroadcastRequestMessageEventArgs> OnServerClientsRequestMessage;
 
-        public EventHandler<MessageEventArgs> OnServerClientsResponseMessage;
+        public EventHandler<BroadcastResponseMessageEventArgs> OnServerClientsResponseMessage;
 
         public void ProcessMessage(BroadcastMessage message)
         {
-            this.RaiseEvent(this.OnBroadcastMessage, message);
+            this.OnBroadcastMessage?.Invoke(this.senderInformation[message], new BroadcastMessageEventArgs(message));
         }
 
         public void ProcessMessage(BroadcastRequestMessage message)
         {
-            this.RaiseEvent(this.OnServerClientsRequestMessage, message);
+            this.OnServerClientsRequestMessage?.Invoke(this.senderInformation[message], new BroadcastRequestMessageEventArgs(message));
         }
 
         public void ProcessMessage(BroadcastResponseMessage message)
         {
-            this.RaiseEvent(this.OnServerClientsResponseMessage, message);
+            this.OnServerClientsResponseMessage?.Invoke(this.senderInformation[message], new BroadcastResponseMessageEventArgs(message));
         }
 
         public void ProcessMessage(ConnectionAcceptServerMessage message)
         {
-            RaiseEvent(this.OnConnectionAcceptedServer, message);
+            this.OnConnectionAcceptedServer?.Invoke(this.senderInformation[message], new ConnectionAcceptedServerMessageEventArgs(message));
         }
 
         public void ProcessMessage(ScoresRequestMessage message)
         {
-            RaiseEvent(OnScoreRequest, message);
+            this.OnScoreRequest?.Invoke(this.senderInformation[message], new MessageEventArgs(message));
         }
 
         public void ProcessMessage(ConnectionRequestClientMessage message)
         {
-            RaiseEvent(OnConnectionRequestClient, message);
+            this.OnConnectionRequestClient?.Invoke(this.senderInformation[message], new ConnectionRequestClientMessageEventArgs(message));
         }
 
         public void ProcessMessage(ConnectionRequestServerMessage message)
         {
-            this.RaiseEvent(OnConnectionRequestServer, message);
+            this.OnConnectionRequestServer?.Invoke(this.senderInformation[message], new ConnectionRequestServerMessageEventArgs(message));
         }
 
         public void ProcessMessage(ConnectionRequestMonitorMessage message)
         {
-            this.RaiseEvent(OnConnectionRequestMonitor, message);
+            this.OnConnectionRequestMonitor?.Invoke(this.senderInformation[message], new MessageEventArgs(message));
         }
 
         public void ProcessMessage(AnswerMessage message)
         {
-            RaiseEvent(OnAnswer, message);
+            this.OnAnswer?.Invoke(this.senderInformation[message], new AnswerMessageEventArgs(message));
         }
 
         public void ProcessMessage(ConnectionDeniedMessage message)
         {
-            RaiseEvent(OnConnectionDenied, message);
+            this.OnConnectionDenied?.Invoke(this.senderInformation[message], new MessageEventArgs(message));
         }
 
         public void ProcessMessage(QuestionMessage message)
         {
-            RaiseEvent(OnQuestion, message);
+            this.OnQuestion?.Invoke(this.senderInformation[message], new QuestionMessageEventArgs(message));
         }
 
         public void ProcessMessage(ScoresResponseMessage message)
         {
-            RaiseEvent(OnScoreResponse, message);
+            this.OnScoreResponse?.Invoke(this.senderInformation[message], new ScoresResponseMessageEventArgs(message));
         }
 
         public void ProcessMessage(ConnectionAcceptMessage message)
         {
-            RaiseEvent(OnConnectionAccepted, message);
+            this.OnConnectionAccepted?.Invoke(this.senderInformation[message], new MessageEventArgs(message));
         }
 
         public void ProcessMessage(DisconnectMessage message)
         {
-            RaiseEvent(this.OnDisconnect, message);
+            this.OnDisconnect?.Invoke(this.senderInformation[message], new MessageEventArgs(message));
         }
 
         public void ProcessMessage(DisconnectServerMessage message)
         {
-            this.RaiseEvent(this.OnDisconnectServer, message);
+            this.OnDisconnectServer?.Invoke(this.senderInformation[message], new MessageEventArgs(message));
         }
 
         public void ProcessMessage(LoggingMessage message)
         {
-            this.RaiseEvent(OnLoggingMessage, message);
+            this.OnLoggingMessage?.Invoke(this.senderInformation[message], new LoggingMessageEventArgs(message));
         }
 
         public void ProcessMessage(GameWonMessage message)
         {
-            this.RaiseEvent(OnGameWonMessage, message);
+            this.OnGameWonMessage?.Invoke(this.senderInformation[message], new GameWonMessageEventArgs(message));
         }
 
         public void ProcessMessage(GameLostMessage message)
         {
-            this.RaiseEvent(OnGameLostMessage, message);
+            this.OnGameLostMessage?.Invoke(this.senderInformation[message], new GameLostMessageEventArgs(message));
         }
 
         public void ProcessMessage(ForwardingMessage message)
         {
-            this.RaiseEvent(OnForwardingMessage, message);
+            this.OnForwardingMessage?.Invoke(this.senderInformation[message], new ForwardingMessageEventArgs(message));
         }
 
         public void ProcessMessage(ServerScoreResponseMessage message)
         {
-            this.RaiseEvent(this.OnServerScoreResponseMessage, message);
+            this.OnServerScoreResponseMessage?.Invoke(this.senderInformation[message], new ServerScoreResponseMessageEventArgs(message));
         }
 
         public void ProcessMessage(ServerScoreRequestMessage message)
         {
-            this.RaiseEvent(this.OnServerScoreRequestMessage, message);
-        }
-
-        public void RaiseEvent(EventHandler<MessageEventArgs> eventHandler, Message message)
-        {
-            if (eventHandler != null)
-            {
-                eventHandler(this.senderInformation[message], new MessageEventArgs(message));
-            }
-
-            lock (locker)
-            {
-                this.senderInformation.Remove(message);
-            }
+            this.OnServerScoreRequestMessage?.Invoke(this.senderInformation[message], new ServerScoreRequestMessageEventArgs(message));
         }
 
         public void DataReceived(object sender, MessageEventArgs eventArgs)
@@ -189,6 +178,11 @@ namespace Shared.Data
             }
 
             eventArgs.MessageContent.ProcessMessage(this);
+
+            lock (locker)
+            {
+                this.senderInformation.Remove(eventArgs.MessageContent);
+            }
         }
     }
 }

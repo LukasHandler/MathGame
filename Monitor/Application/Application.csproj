@@ -48,10 +48,6 @@
       <Project>{b77eb4e1-2545-4178-8b30-891458c763e7}</Project>
       <Name>SharedData</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Data\Data.csproj">
-      <Project>{5ff39252-3b08-47c1-9c60-a4619e844f7f}</Project>
-      <Name>Data</Name>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

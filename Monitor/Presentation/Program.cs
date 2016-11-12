@@ -38,11 +38,11 @@ namespace Monitor.Presentation
             //IPEndPoint serverEndPoint = new IPEndPoint(serverIp, serverPort);
 
             var serverEndPoint = ConsoleInput.GetIPEndPoint("Server");
-            NetworkService.Connect(serverEndPoint);
+            NetworkService.Register(serverEndPoint);
             NetworkService.OnLoggingDataReceived += PrintLogging;
 
             Console.ReadKey();
-            NetworkService.Disconnect();
+            NetworkService.Unregister();
         }
 
         private static void PrintLogging(object sender, LoggingEventArgs e)

@@ -60,7 +60,7 @@ namespace Server.Application
             this.clients = new List<Client>();
 
             MessageProcessor serverMessageProcessor = new MessageProcessor();
-            this.serverDataManager = new TcpClientServerManager(configuration.ServerPort);
+            this.serverDataManager = new TcpServerManager(configuration.ServerPort);
             this.serverDataManager.OnDataReceived += serverMessageProcessor.DataReceived;
             serverMessageProcessor.OnConnectionRequestServer += ConnectionRequestServer;
             serverMessageProcessor.OnConnectionAcceptedServer += ConnectionAcceptedServer;
@@ -73,9 +73,9 @@ namespace Server.Application
             serverMessageProcessor.OnServerClientsResponseMessage += ClientsResponseMessage;
         }
 
-        private void ClientsResponseMessage(object sender, MessageEventArgs e)
+        private void ClientsResponseMessage(object sender, BroadcastResponseMessageEventArgs e)
         {
-            BroadcastResponseMessage clientsResponseMessage = e.MessageContent as BroadcastResponseMessage;
+            BroadcastResponseMessage clientsResponseMessage = e.Message;
             var broadcastMessage = clientsResponseMessage.MessageToBroadcast;
 
             foreach (var client in this.clients)
@@ -89,10 +89,9 @@ namespace Server.Application
             }
         }
 
-        private void ClientsRequestMessage(object sender, MessageEventArgs e)
+        private void ClientsRequestMessage(object sender, BroadcastRequestMessageEventArgs e)
         {
-            BroadcastRequestMessage broadcastRequestMessage = e.MessageContent as BroadcastRequestMessage;
-
+            BroadcastRequestMessage broadcastRequestMessage = e.Message;
             BroadcastResponseMessage clientsResponseMessage = new BroadcastResponseMessage()
             {
                 ClientsInformation = this.clients.Select(p => p.TargetInformation).ToList(),
@@ -102,9 +101,9 @@ namespace Server.Application
             this.serverDataManager.WriteData(clientsResponseMessage, this.otherServer.TargetInformation);
         }
 
-        private void ServerScoreRepsonse(object sender, MessageEventArgs e)
+        private void ServerScoreRepsonse(object sender, ServerScoreResponseMessageEventArgs e)
         {
-            ServerScoreResponseMessage serverScoreResponse = e.MessageContent as ServerScoreResponseMessage;
+            ServerScoreResponseMessage serverScoreResponse = e.Message;
 
             var scores = this.GetScores();
 
@@ -121,9 +120,9 @@ namespace Server.Application
             this.clientDataManager.WriteData(scoreResponse, serverScoreResponse.RequestSender);
         }
 
-        private void ServerScoreRequest(object sender, MessageEventArgs e)
+        private void ServerScoreRequest(object sender, ServerScoreRequestMessageEventArgs e)
         {
-            var serverScoreRequest = e.MessageContent as ServerScoreRequestMessage;
+            var serverScoreRequest = e.Message;
             ServerScoreResponseMessage serverScoreResponse = new ServerScoreResponseMessage()
             {
                 Scores = this.GetScores(),
@@ -133,9 +132,9 @@ namespace Server.Application
             this.serverDataManager.WriteData(serverScoreResponse, sender);
         }
 
-        private void ForwardMessage(object sender, MessageEventArgs e)
+        private void ForwardMessage(object sender, ForwardingMessageEventArgs e)
         {
-            ForwardingMessage forwardingMessage = e.MessageContent as ForwardingMessage;
+            ForwardingMessage forwardingMessage = e.Message;
             this.LogText(string.Format("{0} received message from {1} and sent it to {2}", this.Configuration.ServerName, this.otherServer, forwardingMessage.TargetName));
             this.clientDataManager.WriteData(forwardingMessage.InnerMessage, forwardingMessage.Target);
         }
@@ -146,17 +145,18 @@ namespace Server.Application
             this.otherServer = null;
         }
 
-        private void ConnectionAcceptedServer(object sender, MessageEventArgs e)
+        private void ConnectionAcceptedServer(object sender, ConnectionAcceptedServerMessageEventArgs e)
         {
-            ConnectionAcceptServerMessage serverReponse = (ConnectionAcceptServerMessage)e.MessageContent;
+            ConnectionAcceptServerMessage serverReponse = e.Message;
             this.isActive = serverReponse.IsTargetActive;
             this.otherServer = new Server(serverReponse.SenderName, this.otherServer.TargetInformation);
 
         }
 
-        public void ConnectToServer(object server)
+        public void RegisterToServer(object server)
         {
             this.otherServer = new Server(null, server);
+            this.serverDataManager.Register(server);
 
             ConnectionRequestServerMessage connectionRequest = new ConnectionRequestServerMessage()
             {
@@ -171,11 +171,12 @@ namespace Server.Application
         {
             DisconnectServerMessage disconnect = new DisconnectServerMessage();
             this.serverDataManager.WriteData(disconnect, this.otherServer.TargetInformation);
+            this.serverDataManager.Unregister(this.otherServer.TargetInformation);
         }
 
-        private void ConnectionRequestServer(object sender, MessageEventArgs e)
+        private void ConnectionRequestServer(object sender, ConnectionRequestServerMessageEventArgs e)
         {
-            ConnectionRequestServerMessage request = (ConnectionRequestServerMessage)e.MessageContent;
+            ConnectionRequestServerMessage request = e.Message;
 
             if (request.SenderStartTime == this.startTime)
             {
@@ -245,10 +246,9 @@ namespace Server.Application
             return this.clients.Select(p => new ScoreEntry(p.Name, p.Score)).OrderByDescending(p => p.Score).ToList();
         }
 
-        private void SubmitAnswer(object sender, MessageEventArgs e)
+        private void SubmitAnswer(object sender, AnswerMessageEventArgs e)
         {
-            AnswerMessage answerMessage = e.MessageContent as AnswerMessage;
-            //IPEndPoint clientAdress = (IPEndPoint)answerMessage.SenderInformation;
+            AnswerMessage answerMessage = e.Message;
             var client = this.clients.First(p => p.TargetInformation.Equals(sender));
 
             if (client.Score < this.Configuration.MaxScore &&
@@ -330,9 +330,9 @@ namespace Server.Application
             }
         }
 
-        private void ConnectionRequestedClient(object sender, MessageEventArgs e)
+        private void ConnectionRequestedClient(object sender, ConnectionRequestClientMessageEventArgs e)
         {
-            var message = e.MessageContent;
+            ConnectionRequestClientMessage message = e.Message;
             var senderName = message.SenderName;
 
             LogText(string.Format("Connection request from {0} to {1}", senderName, this.Configuration.ServerName));

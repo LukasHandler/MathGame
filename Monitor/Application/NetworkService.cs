@@ -17,8 +17,6 @@ namespace Monitor.Application
 
         private static IDataManager clientManager;
 
-        //private static IPEndPoint localEndPoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 4714);
-
         private static IPEndPoint serverEndPoint;
 
         public static EventHandler<LoggingEventArgs> OnLoggingDataReceived;
@@ -36,43 +34,38 @@ namespace Monitor.Application
             clientManager.OnDataReceived += messageProcessor.DataReceived;
         }
 
-        private static void ReceivedLoggingMessage(object sender, MessageEventArgs e)
+        private static void ReceivedLoggingMessage(object sender, LoggingMessageEventArgs e)
         {
             if (OnLoggingDataReceived != null)
             {
-                string loggingMessage = ((LoggingMessage)e.MessageContent).Text;
-
+                string loggingMessage = e.Message.Text;
                 OnLoggingDataReceived(sender, new LoggingEventArgs(loggingMessage));
             }
         }
 
-        private static void ConnectionAccepted(object sender, MessageEventArgs e)
+        private static void ConnectionAccepted(object sender, EventArgs e)
         {
             isConnected = true;
         }
 
-        public static void Connect(IPEndPoint serverPoint)
+        public static void Register(IPEndPoint serverPoint)
         {
             serverEndPoint = serverPoint;
 
-            ConnectionRequestMonitorMessage requestMessage = new ConnectionRequestMonitorMessage()
-            {
-
-            };
+            clientManager.Register(serverEndPoint);
+            ConnectionRequestMonitorMessage requestMessage = new ConnectionRequestMonitorMessage();
 
             clientManager.WriteData(requestMessage, serverEndPoint);
         }
 
-        public static void Disconnect()
+        public static void Unregister()
         {
             if (isConnected)
             {
-                DisconnectMessage disconnectMessage = new DisconnectMessage()
-                {
-
-                };
+                DisconnectMessage disconnectMessage = new DisconnectMessage();
 
                 clientManager.WriteData(disconnectMessage, serverEndPoint);
+                clientManager.Unregister(serverEndPoint);
             }
         }
     }
