@@ -41,7 +41,7 @@ namespace Monitor.Presentation
             DataService.Register(serverEndPoint);
             DataService.OnLoggingDataReceived += PrintLogging;
 
-            Console.ReadKey();
+            Console.ReadLine();
             DataService.Unregister();
         }
 

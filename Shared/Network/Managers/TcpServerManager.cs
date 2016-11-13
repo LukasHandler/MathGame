@@ -52,10 +52,8 @@ namespace Shared.Data.Managers
             }
         }
 
-        protected override void SendData(Message data, IPEndPoint target)
+        protected override void SendData(byte[] bytes, IPEndPoint target)
         {
-            byte[] bytes = MessageByteConverter.ConvertToBytes(data);
-
             if (this.clients.ContainsKey(target) && this.clients[target].Count > 0)
             {
                 this.clients[target].First().GetStream().Write(bytes, 0, bytes.Length);

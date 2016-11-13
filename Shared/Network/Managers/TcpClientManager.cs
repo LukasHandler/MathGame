@@ -16,12 +16,11 @@ namespace Shared.Data.Managers
 
         private TcpClient client;
 
-        protected override void SendData(Message data, IPEndPoint target)
+        protected override void SendData(byte[] data, IPEndPoint target)
         {
             if (this.stream != null)
             {
-                byte[] bytes = MessageByteConverter.ConvertToBytes(data);
-                stream.Write(bytes, 0, bytes.Length);
+                stream.Write(data, 0, data.Length);
             }
         }
 

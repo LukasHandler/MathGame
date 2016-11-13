@@ -7,6 +7,7 @@ using Shared.Data.EventArguments;
 using Shared.Data.Messages;
 using System.Net.Sockets;
 using System.Net;
+using System.IO;
 
 namespace Shared.Data.Managers
 {
@@ -30,15 +31,43 @@ namespace Shared.Data.Managers
 
         public void WriteData(Message data, object target)
         {
-            this.SendData(data, (IPEndPoint)target);
+            byte[] bytes = MessageByteConverter.ConvertToBytes(data);
+            byte[] size = BitConverter.GetBytes(bytes.Count());
+
+            byte[] fullData = new byte[bytes.Count() + size.Count()];
+
+            var s = new MemoryStream();
+            s.Write(size, 0, size.Length);
+            s.Write(bytes, 0, bytes.Length);
+            fullData = s.ToArray();
+
+            this.SendData(fullData, (IPEndPoint)target);
         }
 
-        protected abstract void SendData(Message data, IPEndPoint target);
+        protected abstract void SendData(byte[] data, IPEndPoint target);
 
         protected void StartReading(NetworkStream stream, IPEndPoint target)
         {
+            byte[] byteSize = new byte[4];
+            byte[] buffer = null;
             AsyncCallback callback = null;
-            byte[] buffer = new byte[10000];
+
+            AsyncCallback lengthCallback = delegate (IAsyncResult result)
+            {
+                int bytesRead;
+
+                try
+                {
+                    bytesRead = stream.EndRead(result);
+                }
+                catch (System.IO.IOException)
+                {
+                    return;
+                }
+
+                buffer = new byte[BitConverter.ToInt32(byteSize, 0)];
+                stream.BeginRead(buffer, 0, buffer.Length, callback, null);
+            };
 
             callback = delegate (IAsyncResult result)
             {
@@ -57,8 +86,8 @@ namespace Shared.Data.Managers
                 byte[] toConvertBuffer = new byte[bytesRead];
                 Array.Copy(buffer, toConvertBuffer, bytesRead);
 
-                buffer = new byte[10000];
-                stream.BeginRead(buffer, 0, buffer.Length, callback, null);
+                byteSize = new byte[4];
+                stream.BeginRead(byteSize, 0, byteSize.Length, lengthCallback, null);
 
                 Message receivedMessage = MessageByteConverter.ConvertToMessage(toConvertBuffer);
 
@@ -68,9 +97,14 @@ namespace Shared.Data.Managers
                 }
             };
 
-            stream.BeginRead(buffer, 0, buffer.Length, callback, null);
+            stream.BeginRead(byteSize, 0, byteSize.Length, lengthCallback, null);
         }
 
-
+        private int GetPacketSize(NetworkStream stream)
+        {
+            byte[] bufferSize = new byte[4];
+            stream.Read(bufferSize, 0, 4);
+            return Convert.ToInt32(bufferSize);
+        }
     }
 }
