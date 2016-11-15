@@ -11,6 +11,7 @@ using System.Reflection;
 using Shared.Data.EventArguments;
 using System.Threading;
 using System.Collections.Concurrent;
+using Server.Application.EventArguments;
 
 namespace Server.Application
 {
@@ -34,7 +35,24 @@ namespace Server.Application
 
         public EventHandler<LoggingEventArgs> OnLoggingMessage;
 
+        public EventHandler<ServerConnectionCountChangedEventArgs> OnServerConnectionCountChanged;
+
         private Server otherServer;
+
+        public int ServerConnectionCount
+        {
+            get
+            {
+                if (this.otherServer == null)
+                {
+                    return 0;
+                }
+                else
+                {
+                    return this.otherServer.TargetInformation.Count();
+                }
+            }
+        }
 
         public DataService(ServerConfiguration configuration)
         {
@@ -98,7 +116,7 @@ namespace Server.Application
                 MessageToBroadcast = broadcastRequestMessage.MessageToBroadcast
             };
 
-            this.serverDataManager.WriteData(clientsResponseMessage, this.otherServer.TargetInformation);
+            this.serverDataManager.WriteData(clientsResponseMessage, this.otherServer.TargetInformation.First());
         }
 
         private void ServerScoreRepsonse(object sender, ServerScoreResponseMessageEventArgs e)
@@ -142,8 +160,10 @@ namespace Server.Application
         private void DisconnectServer(object sender, DisconnectServerMessageEventArgs e)
         {
             this.serverDataManager.Unregister(sender);
+            this.otherServer.TargetInformation.Remove(this.otherServer.TargetInformation.First(p => p.Equals(sender)));
+            this.OnServerConnectionCountChanged?.Invoke(this, new ServerConnectionCountChangedEventArgs(this.ServerConnectionCount));
 
-            if (e.Message.LastConnection)
+            if (this.otherServer.TargetInformation.Count == 0)
             {
                 this.isActive = true;
                 this.otherServer = null;
@@ -154,13 +174,21 @@ namespace Server.Application
         {
             ConnectionAcceptServerMessage serverReponse = e.Message;
             this.isActive = serverReponse.IsTargetActive;
-            this.otherServer = new Server(serverReponse.SenderName, this.otherServer.TargetInformation);
 
+            if (this.otherServer == null)
+            {
+                this.otherServer = new Server(serverReponse.SenderName, sender);
+            }
+            else
+            {
+                this.otherServer.TargetInformation.Add(sender);
+            }
+
+            this.OnServerConnectionCountChanged?.Invoke(this, new ServerConnectionCountChangedEventArgs(this.ServerConnectionCount));
         }
 
         public void RegisterToServer(object server)
         {
-            this.otherServer = new Server(null, server);
             this.serverDataManager.Register(server);
 
             ConnectionRequestServerMessage connectionRequest = new ConnectionRequestServerMessage()
@@ -172,15 +200,17 @@ namespace Server.Application
             this.serverDataManager.WriteData(connectionRequest, server);
         }
 
-        public void DisconnectFromServer(object server, int connectionCount)
+        public void UnregisterFromServer(object server)
         {
             DisconnectServerMessage disconnect = new DisconnectServerMessage()
             {
-                LastConnection = connectionCount == 1 ? true : false
+                LastConnection = this.otherServer.TargetInformation.Count == 1 ? true : false
             };
 
             this.serverDataManager.WriteData(disconnect, server);
             this.serverDataManager.Unregister(server);
+            this.otherServer.TargetInformation.Remove(this.otherServer.TargetInformation.First(p => p.Equals(server)));
+            this.OnServerConnectionCountChanged?.Invoke(this, new ServerConnectionCountChangedEventArgs(this.ServerConnectionCount));
         }
 
         private void ConnectionRequestServer(object sender, ConnectionRequestServerMessageEventArgs e)
@@ -212,8 +242,17 @@ namespace Server.Application
                 IsTargetActive = !this.isActive
             };
 
-            this.otherServer = new Server(request.SenderName, sender);
-            this.serverDataManager.WriteData(response, this.otherServer.TargetInformation);
+            if (this.otherServer == null)
+            {
+                this.otherServer = new Server(request.SenderName, sender);
+            }
+            else
+            {
+                this.otherServer.TargetInformation.Add(sender);
+            }
+
+            this.OnServerConnectionCountChanged?.Invoke(this, new ServerConnectionCountChangedEventArgs(this.ServerConnectionCount));
+            this.serverDataManager.WriteData(response, this.otherServer.TargetInformation.First());
         }
 
         private void SendScores(object sender, MessageEventArgs e)
@@ -234,8 +273,8 @@ namespace Server.Application
             {
                 if (this.isActive)
                 {
-                    ServerScoreRequestMessage serverRequestMessage = new ServerScoreRequestMessage() { RequestSender = sender};
-                    this.serverDataManager.WriteData(serverRequestMessage, this.otherServer.TargetInformation);
+                    ServerScoreRequestMessage serverRequestMessage = new ServerScoreRequestMessage() { RequestSender = sender };
+                    this.serverDataManager.WriteData(serverRequestMessage, this.otherServer.TargetInformation.First());
                 }
                 else
                 {
@@ -244,7 +283,7 @@ namespace Server.Application
                         RequestSender = sender,
                         Scores = scores
                     };
-                    this.serverDataManager.WriteData(serverResponseMessage, this.otherServer.TargetInformation);
+                    this.serverDataManager.WriteData(serverResponseMessage, this.otherServer.TargetInformation.First());
                 }
             }
 
@@ -405,7 +444,7 @@ namespace Server.Application
                         MessageToBroadcast = broadcastMessage
                     };
 
-                    this.serverDataManager.WriteData(broadcastRequestMessage, this.otherServer.TargetInformation);
+                    this.serverDataManager.WriteData(broadcastRequestMessage, this.otherServer.TargetInformation.First());
                 }
                 else
                 {
@@ -415,7 +454,7 @@ namespace Server.Application
                         MessageToBroadcast = broadcastMessage
                     };
 
-                    this.serverDataManager.WriteData(broadcastResponseMessage, this.otherServer.TargetInformation);
+                    this.serverDataManager.WriteData(broadcastResponseMessage, this.otherServer.TargetInformation.First());
                 }
             }
         }
@@ -534,8 +573,8 @@ namespace Server.Application
             else
             {
                 this.LogText(string.Format("{0} sent message to {1}", this.Configuration.ServerName, this.otherServer));
-                ForwardingMessage forwardingMessage = new ForwardingMessage() { InnerMessage = message, Target = target, TargetName = this.GetClientFromSenderInformation(target).Name};
-                this.serverDataManager.WriteData(forwardingMessage, this.otherServer.TargetInformation);
+                ForwardingMessage forwardingMessage = new ForwardingMessage() { InnerMessage = message, Target = target, TargetName = this.GetClientFromSenderInformation(target).Name };
+                this.serverDataManager.WriteData(forwardingMessage, this.otherServer.TargetInformation.First());
             }
         }
     }

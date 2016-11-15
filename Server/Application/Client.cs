@@ -8,8 +8,10 @@ using System.Threading.Tasks;
 
 namespace Server.Application
 {
-    public class Client : GameMember
+    public class Client
     {
+        public object TargetInformation { get; set; }
+
         private int score;
 
         private int maxScore;
@@ -53,7 +55,7 @@ namespace Server.Application
 
         public MathQuestion Question { get; set; }
 
-        public Client(string name, int minScore, int maxScore, object targetInformation) : base(targetInformation)
+        public Client(string name, int minScore, int maxScore, object targetInformation)
         {
             this.TargetInformation = targetInformation;
             this.minScore = minScore;

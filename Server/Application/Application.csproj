@@ -41,7 +41,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Client.cs" />
-    <Compile Include="GameMember.cs" />
+    <Compile Include="EventArguments\ServerConnectionCountChangedEventArgs.cs" />
     <Compile Include="Monitor.cs" />
     <Compile Include="DataService.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

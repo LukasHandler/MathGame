@@ -8,18 +8,18 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Server.Application.EventArguments;
 
 namespace Server.Presentation
 {
     class Program
     {
-        private static int connectionCount = 0;
-
         private static ServerConfiguration configuration;
 
         [STAThread]
         static void Main(string[] args)
         {
+            Console.Title = "Server-Server-Connections: 0";
             OpenFileDialog selectConfigFile = new OpenFileDialog();
             selectConfigFile.Title = "Load Configuration";
             selectConfigFile.Filter = "JSON files|*.json";
@@ -60,6 +60,7 @@ namespace Server.Presentation
 
             DataService serverService = new DataService(configuration);
             serverService.OnLoggingMessage += PrintLoggingMessage;
+            serverService.OnServerConnectionCountChanged += ChangeServerConnectionCount;
 
             PrintServerInformation();
 
@@ -70,43 +71,44 @@ namespace Server.Presentation
 
                 do
                 {
-                    Console.WriteLine("Server-Connections: {0}. connect/disconnect/exit", connectionCount);
+                    Console.WriteLine("connect/disconnect/exit", serverService.ServerConnectionCount);
 
                     Console.Write("> ");
                     input = Console.ReadLine().ToLower();
 
                     if (input == "connect")
                     {
-                        if (connectionCount == int.MaxValue)
+                        if (serverService.ServerConnectionCount == int.MaxValue)
                         {
                             Console.WriteLine("Error, can't create more connections");
                         }
 
                         serverService.RegisterToServer(serverEndPoint);
-                        connectionCount++;
-
                     }
                     else if (input == "disconnect")
                     {
-                        if (connectionCount == 0)
+                        if (serverService.ServerConnectionCount == 0)
                         {
                             Console.WriteLine("Error, there is no connection to disconnect from");
                         }
                         else
                         {
-                            serverService.DisconnectFromServer(serverEndPoint, connectionCount);
-                            connectionCount--;
+                            serverService.UnregisterFromServer(serverEndPoint);
                         }
                     }
 
                 } while (input != "exit");
 
-                while(connectionCount > 0)
+                while(serverService.ServerConnectionCount > 0)
                 {
-                    serverService.DisconnectFromServer(serverEndPoint, connectionCount);
-                    connectionCount--;
+                    serverService.UnregisterFromServer(serverEndPoint);
                 }
             }
+        }
+
+        private static void ChangeServerConnectionCount(object sender, ServerConnectionCountChangedEventArgs e)
+        {
+            Console.Title = "Server-Server-Connections: " + Convert.ToString(e.NewConnectionCount);
         }
 
         private static void CreateDefaultConfiguration()

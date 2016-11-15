@@ -15,8 +15,11 @@ namespace Shared.Data.Managers
 
         private IPEndPoint localEndPoint;
 
+        private int port;
+
         public TcpServerManager(int port)
         {
+            this.port = port;
             this.localEndPoint = new IPEndPoint(IPAddress.Any, port);
             this.clients = new Dictionary<IPEndPoint, List<TcpClient>>();
 

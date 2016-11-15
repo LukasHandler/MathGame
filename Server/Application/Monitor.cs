@@ -6,9 +6,14 @@ using System.Threading.Tasks;
 
 namespace Server.Application
 {
-    public class Monitor : GameMember
+    public class Monitor
     {
-        public Monitor(object targetInformation) : base(targetInformation) { }
+        public object TargetInformation { get; set; }
+
+        public Monitor(object targetInformation)
+        {
+            this.TargetInformation = targetInformation;
+        }
 
         public override string ToString()
         {
