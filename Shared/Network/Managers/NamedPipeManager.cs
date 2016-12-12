@@ -14,6 +14,8 @@ namespace Shared.Data.Managers
     {
         private string serverName;
 
+        private object locker;
+
         private Dictionary<string, NamedPipeClientStream> clients;
 
         public event EventHandler<MessageEventArgs> OnDataReceived;
@@ -21,6 +23,7 @@ namespace Shared.Data.Managers
 
         public NamedPipeManager(string serverPipeName)
         {
+            this.locker = new object();
             this.serverName = serverPipeName;
             this.clients = new Dictionary<string, NamedPipeClientStream>();
             var server = new NamedPipeServerStream(serverPipeName, PipeDirection.In, 254, PipeTransmissionMode.Message, PipeOptions.Asynchronous);
@@ -40,16 +43,16 @@ namespace Shared.Data.Managers
             byte[] myBuffer = new byte[1000];
             Tuple<NamedPipeServerStream, byte[]> tuple = new Tuple<NamedPipeServerStream, byte[]>(server, myBuffer);
 
-            while (true)
+            byte[] payloadSize = new byte[4];
+            byte[] payload = null;
+            AsyncCallback readSizeCallback = null;
+
+            AsyncCallback readPayloadCallback = delegate (IAsyncResult asyncResultPayload)
             {
-                byte[] payloadSize = new byte[4];
-                server.Read(payloadSize, 0, payloadSize.Length);
-                byte[] payload = new byte[BitConverter.ToInt32(payloadSize, 0)];
-
-                int bytesRead = server.Read(payload, 0, payload.Length);
-
+                int bytesRead = server.EndRead(asyncResultPayload);
                 byte[] copyPayload = new byte[bytesRead];
                 Array.Copy(payload, copyPayload, bytesRead);
+                server.BeginRead(payloadSize, 0, payloadSize.Length, readSizeCallback, null);
 
                 byte[] senderPipeNameSizeBytes = copyPayload.Take(4).ToArray();
                 int senderPipeNameSize = BitConverter.ToInt32(senderPipeNameSizeBytes, 0);
@@ -62,19 +65,31 @@ namespace Shared.Data.Managers
 
                 Message receivedMessage = MessageByteConverter.ConvertToMessage(message);
                 OnDataReceived?.Invoke(sender, new MessageEventArgs(receivedMessage));
-            }
+            };
+
+            readSizeCallback = delegate (IAsyncResult asynResultSize)
+            {
+                server.EndRead(asynResultSize);
+                payload = new byte[BitConverter.ToInt32(payloadSize, 0)];
+                server.BeginRead(payload, 0, payload.Length, readPayloadCallback, null);
+            };
+
+            server.BeginRead(payloadSize, 0, payloadSize.Length, readSizeCallback, null);
         }
 
         public void Register(object target)
         {
             var targetPipe = (string)target;
 
-            if (!this.clients.ContainsKey(targetPipe))
+            lock (locker)
             {
-                var newClient = new NamedPipeClientStream(".", targetPipe, PipeDirection.Out, PipeOptions.Asynchronous);
-                newClient.Connect();
-                newClient.ReadMode = PipeTransmissionMode.Message;
-                clients.Add(targetPipe, newClient);
+                if (!this.clients.ContainsKey(targetPipe))
+                {
+                    var newClient = new NamedPipeClientStream(".", targetPipe, PipeDirection.Out, PipeOptions.Asynchronous);
+                    clients.Add(targetPipe, newClient);
+                    newClient.Connect();
+                    newClient.ReadMode = PipeTransmissionMode.Message;
+                }
             }
         }
 
@@ -119,7 +134,11 @@ namespace Shared.Data.Managers
                 s.Dispose();
 
                 var client = this.clients[targetPipe];
-                client.Write(payload, 0, payload.Count());
+
+                lock (locker)
+                {
+                    client.Write(payload, 0, payload.Count());
+                }
             }
         }
     }
