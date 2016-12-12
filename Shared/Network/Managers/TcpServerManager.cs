@@ -35,23 +35,21 @@ namespace Shared.Data.Managers
             {
                 var client = await tcpListener.AcceptTcpClientAsync();
 
-                AddClient(client);
+                AddClient(client, (IPEndPoint)client.Client.RemoteEndPoint);
 
                 this.StartReading(client.GetStream(), (IPEndPoint)client.Client.RemoteEndPoint);
             }
         }
 
-        private void AddClient(TcpClient client)
+        private void AddClient(TcpClient client, IPEndPoint target)
         {
-            var clientEndPoint = (IPEndPoint)client.Client.RemoteEndPoint;
-
-            if (this.clients.ContainsKey(clientEndPoint))
+            if (this.clients.ContainsKey(target))
             {
-                this.clients[clientEndPoint].Add(client);
+                this.clients[target].Add(client);
             }
             else
             {
-                this.clients.Add(clientEndPoint, new List<TcpClient>() { client });
+                this.clients.Add(target, new List<TcpClient>() { client });
             }
         }
 
@@ -59,7 +57,7 @@ namespace Shared.Data.Managers
         {
             if (this.clients.ContainsKey(target) && this.clients[target].Count > 0)
             {
-                this.clients[target].First().GetStream().Write(bytes, 0, bytes.Length);
+                this.clients[target].Last().GetStream().Write(bytes, 0, bytes.Length);
             }
         }
 
@@ -69,7 +67,7 @@ namespace Shared.Data.Managers
             {
                 if (this.clients[target].Count > 0)
                 {
-                    this.clients[target].RemoveAt(0);
+                    this.clients[target].RemoveAt(this.clients[target].Count - 1);
                 }
             }
         }
@@ -81,7 +79,7 @@ namespace Shared.Data.Managers
             try
             {
                 client.Connect(target);
-                this.AddClient(client);
+                this.AddClient(client, target);
                 this.StartReading(client.GetStream(), target);
             }
             catch (Exception)

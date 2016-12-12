@@ -1,0 +1,9 @@
+ {
+	"ServerName": "server1",
+	"ClientPort": "4701",
+	"MonitorPort": "4801",
+	"ServerPort": "4901",
+	"MaxScore": "10",
+  "MinScore": "-5",
+  "UseNamedPipes":  "true"
+ }

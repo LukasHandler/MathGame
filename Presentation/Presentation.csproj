@@ -4,11 +4,11 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{3A04D05C-4073-45CB-ABF7-8A2122A4135C}</ProjectGuid>
+    <ProjectGuid>{9AE905B9-788F-4855-812F-11412214B654}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Client.Presentation</RootNamespace>
-    <AssemblyName>Client.Presentation</AssemblyName>
+    <RootNamespace>Presentation</RootNamespace>
+    <AssemblyName>Presentation</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
@@ -35,8 +35,13 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Newtonsoft.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.9.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Core" />
@@ -87,6 +92,7 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+    <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -97,17 +103,13 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\SharedPresentation\SharedPresentation.csproj">
+    <ProjectReference Include="..\Server\Application\Application.csproj">
+      <Project>{79dfcd64-3db7-4b2c-8f3c-1cdbf831ba92}</Project>
+      <Name>Application</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\SharedPresentation\SharedPresentation.csproj">
       <Project>{490f6e4f-6e94-439c-a558-b94e821d7f22}</Project>
       <Name>SharedPresentation</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\Shared\Network\SharedData.csproj">
-      <Project>{b77eb4e1-2545-4178-8b30-891458c763e7}</Project>
-      <Name>SharedData</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Application\Application.csproj">
-      <Project>{efa5d6e7-f798-4007-afc2-f84494a87061}</Project>
-      <Name>Application</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

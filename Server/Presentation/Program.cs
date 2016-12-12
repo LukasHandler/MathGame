@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Server.Application.EventArguments;
 
-namespace Server.Presentation
+namespace Server.Presentation2
 {
     class Program
     {

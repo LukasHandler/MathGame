@@ -40,6 +40,7 @@ namespace Shared.Data.Managers
             s.Write(size, 0, size.Length);
             s.Write(bytes, 0, bytes.Length);
             fullData = s.ToArray();
+            s.Dispose();
 
             this.SendData(fullData, (IPEndPoint)target);
         }

@@ -66,7 +66,14 @@ namespace Server.Application
             clientMessageProcessor.OnAnswer += SubmitAnswer;
             clientMessageProcessor.OnScoreRequest += SendScores;
 
-            clientDataManager = new UdpServerManager(this.Configuration.ClientPort);
+            if (configuration.UseNamedPipes)
+            {
+                clientDataManager = new NamedPipeManager(configuration.ServerName);
+            }
+            else
+            {
+                clientDataManager = new UdpServerManager(this.Configuration.ClientPort);
+            }
             clientDataManager.OnDataReceived += clientMessageProcessor.DataReceived;
 
             MessageProcessor monitorMessageProcessor = new MessageProcessor();

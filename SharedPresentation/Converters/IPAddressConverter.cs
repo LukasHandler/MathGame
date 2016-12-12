@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Data;
 
-namespace Client.Presentation.Converters
+namespace Shared.SharedPresentation.Converters
 {
     public class IPAddressConverter : IValueConverter
     {

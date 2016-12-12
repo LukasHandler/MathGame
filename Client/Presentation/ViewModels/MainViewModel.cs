@@ -1,8 +1,8 @@
 ﻿using Client.Application;
 using Client.Application.EventArguments;
-using Client.Presentation.Utilities;
 using Shared.Data;
 using Shared.Data.EventArguments;
+using Shared.SharedPresentation.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -32,6 +32,7 @@ namespace Client.Presentation.ViewModels
             this.PlayerName = "horst";
             this.ServerAddress = IPAddress.Parse("127.0.0.1");
             this.ServerPort = 4701;
+            this.ServerName = "server1";
             this.Questions = new ObservableCollection<string>();
             this.Scores = new List<ScoreEntry>();
 
@@ -163,6 +164,8 @@ namespace Client.Presentation.ViewModels
 
         private List<ScoreEntry> scores;
 
+        private string serverName;
+
         public List<ScoreEntry> Scores
         {
             get
@@ -217,6 +220,24 @@ namespace Client.Presentation.ViewModels
 
         public int ServerPort { get; set; }
 
+        public string ServerName
+        {
+            get
+            {
+                return this.serverName;
+            }
+            set
+            {
+                if (this.serverName != value)
+                {
+                    this.serverName = value;
+                    this.OnPropertyChanged();
+                }
+            }
+        }
+
+        public bool IsNamedPipes { get; set; }
+
         public int Answer { get; set; }
 
         public int Score
@@ -264,7 +285,14 @@ namespace Client.Presentation.ViewModels
                             //if (!isConnecting)
                             {
                                 //isConnecting = true;
-                                networkService.Connect(new IPEndPoint(this.ServerAddress, this.ServerPort), this.PlayerName);
+                                if (this.IsNamedPipes)
+                                {
+                                    networkService.Connect(this.serverName, this.PlayerName, this.IsNamedPipes);
+                                }
+                                else
+                                {
+                                    networkService.Connect(new IPEndPoint(this.ServerAddress, this.ServerPort), this.PlayerName, this.IsNamedPipes);
+                                }
                             }
                         }
                         catch (Exception exc)

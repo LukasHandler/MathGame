@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
 
-namespace Client.Presentation.Utilities
+namespace Shared.SharedPresentation.Utilities
 {
     // https://gist.github.com/schuster-rainer/2648922
     public class RelayCommand : ICommand

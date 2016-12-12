@@ -2,25 +2,25 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Controls;
 
-namespace Client.Presentation.ValidationRules
+namespace Shared.SharedPresentation.ValidationRules
 {
-    public class IPAddressRule : ValidationRule
+    public class NameRule : ValidationRule
     {
         public override ValidationResult Validate(object value, CultureInfo cultureInfo)
         {
-            IPAddress notUsedResult = null;
-            if (IPAddress.TryParse((string)value, out notUsedResult))
+            string serverName = (string)value;
+
+            if (serverName == null || serverName.Trim() == string.Empty)
             {
-                return new ValidationResult(true, null);
+                return new ValidationResult(false, null);
             }
             else
             {
-                return new ValidationResult(false, null);
+                return new ValidationResult(true, null);
             }
         }
     }

@@ -34,16 +34,13 @@ namespace Client.Application
 
         private IPEndPoint localEndPoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 4712);
 
-        private IPEndPoint serverEndPoint;
+        private object serverEndPoint;
 
         private string clientName;
 
         public DataService()
         {
             messageProcessor = new MessageProcessor();
-
-            networkManager = new UdpClientManager();
-            networkManager.OnDataReceived += messageProcessor.DataReceived;
 
             messageProcessor.OnConnectionAccepted += delegate (object sender, MessageEventArgs args)
             {
@@ -103,8 +100,19 @@ namespace Client.Application
             };
         }
 
-        public void Connect(IPEndPoint server, string playerName)
+        public void Connect(object server, string playerName, bool isNamedPipes)
         {
+            if (isNamedPipes)
+            {
+                networkManager = new NamedPipeManager();
+            }
+            else
+            {
+                networkManager = new UdpClientManager();
+            }
+
+            networkManager.OnDataReceived += messageProcessor.DataReceived;
+
             this.clientName = playerName;
             serverEndPoint = server;
 
