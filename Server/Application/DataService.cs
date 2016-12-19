@@ -12,6 +12,8 @@ using Shared.Data.EventArguments;
 using System.Threading;
 using System.Collections.Concurrent;
 using Server.Application.EventArguments;
+using System.Net.Sockets;
+using Server.Application.Exceptions;
 
 namespace Server.Application
 {
@@ -66,27 +68,14 @@ namespace Server.Application
             clientMessageProcessor.OnAnswer += SubmitAnswer;
             clientMessageProcessor.OnScoreRequest += SendScores;
 
-            if (configuration.UseNamedPipes)
-            {
-                clientDataManager = new NamedPipeManager(configuration.ServerName);
-            }
-            else
-            {
-                clientDataManager = new UdpServerManager(this.Configuration.ClientPort);
-            }
-            clientDataManager.OnDataReceived += clientMessageProcessor.DataReceived;
-
             MessageProcessor monitorMessageProcessor = new MessageProcessor();
             monitorMessageProcessor.OnConnectionRequestMonitor += ConnectionRequestedMonitor;
-            monitorDataManager = new TcpServerManager(this.Configuration.MonitorPort);
-            monitorDataManager.OnDataReceived += monitorMessageProcessor.DataReceived;
             monitors = new List<Monitor>();
 
             this.clients = new List<Client>();
 
             MessageProcessor serverMessageProcessor = new MessageProcessor();
-            this.serverDataManager = new TcpServerManager(configuration.ServerPort);
-            this.serverDataManager.OnDataReceived += serverMessageProcessor.DataReceived;
+
             serverMessageProcessor.OnConnectionRequestServer += ConnectionRequestServer;
             serverMessageProcessor.OnConnectionAcceptedServer += ConnectionAcceptedServer;
             serverMessageProcessor.OnDisconnectServer += DisconnectServer;
@@ -96,6 +85,34 @@ namespace Server.Application
 
             serverMessageProcessor.OnServerClientsRequestMessage += ClientsRequestMessage;
             serverMessageProcessor.OnServerClientsResponseMessage += ClientsResponseMessage;
+
+            int port = this.Configuration.ClientPort;
+
+            try
+            {
+                if (configuration.UseNamedPipes)
+                {
+                    clientDataManager = new NamedPipeManager(configuration.ServerName);
+                }
+                else
+                {
+                    clientDataManager = new UdpServerManager(port);
+                }
+
+                clientDataManager.OnDataReceived += clientMessageProcessor.DataReceived;
+
+                port = this.Configuration.MonitorPort;
+                monitorDataManager = new TcpServerManager(port);
+                monitorDataManager.OnDataReceived += monitorMessageProcessor.DataReceived;
+
+                port = this.Configuration.ServerPort;
+                this.serverDataManager = new TcpServerManager(port);
+                this.serverDataManager.OnDataReceived += serverMessageProcessor.DataReceived;
+            }
+            catch (SocketException)
+            {
+                throw new PortException(port);
+            }
         }
 
         private void ClientsResponseMessage(object sender, BroadcastResponseMessageEventArgs e)

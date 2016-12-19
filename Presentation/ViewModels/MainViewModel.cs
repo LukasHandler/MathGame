@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using Server.Application;
 using Server.Application.EventArguments;
+using Server.Application.Exceptions;
 using Shared.SharedPresentation.Utilities;
 using System;
 using System.Collections.Generic;
@@ -209,7 +210,15 @@ namespace Presentation.ViewModels
                 this.ClientConnectionPort = configuration.ClientPort;
                 this.ServerConnectionPort = configuration.ServerPort;
 
-                dataService = new DataService(configuration);
+                try
+                {
+                    dataService = new DataService(configuration);
+                }
+                catch(PortException e)
+                {
+                    MessageBox.Show(e.Message + Environment.NewLine + "Restart application with new free port", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    Environment.Exit(1);
+                }
 
                 dataService.OnServerConnectionCountChanged += delegate (object sender, ServerConnectionCountChangedEventArgs args)
                 {
