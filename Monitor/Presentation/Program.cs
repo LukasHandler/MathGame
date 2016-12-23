@@ -14,29 +14,6 @@ namespace Monitor.Presentation
     {
         static void Main(string[] args)
         {
-            //IPAddress serverIp;
-
-            //do
-            //{
-            //    Console.Write("Server-IP: " + input);
-            //    input = Console.ReadLine();
-
-            //} while (!IPAddress.TryParse(input, out serverIp));
-
-            //int serverPort = 0;
-
-            //do
-            //{
-            //    Console.Write("Server-Port: " + serverPort);
-            //    input = Console.ReadLine();
-
-            //} while (!Int32.TryParse(input, out serverPort));
-
-            //serverIp = IPAddress.Parse("127.0.0.1");
-            //serverPort = 4801;
-
-            //IPEndPoint serverEndPoint = new IPEndPoint(serverIp, serverPort);
-
             var serverEndPoint = ConsoleInput.GetIPEndPoint("Server");
             DataService.Register(serverEndPoint);
             DataService.OnLoggingDataReceived += PrintLogging;

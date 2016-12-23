@@ -9,8 +9,6 @@ namespace Shared.Data.Messages
     [Serializable]
     public class DisconnectServerMessage : Message
     {
-        public bool LastConnection { get; set; }
-
         public override void ProcessMessage(IMessageVisitor processor)
         {
             processor.ProcessMessage(this);

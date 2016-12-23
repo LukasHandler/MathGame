@@ -6,12 +6,14 @@
         xmlns:local="clr-namespace:Presentation"
         xmlns:vms="clr-namespace:Presentation.ViewModels"
         xmlns:converters="clr-namespace:Shared.SharedPresentation.Converters;assembly=SharedPresentation"
+        xmlns:serverConverters="clr-namespace:Presentation.Converters"
         xmlns:validationRules="clr-namespace:Shared.SharedPresentation.ValidationRules;assembly=SharedPresentation"
         mc:Ignorable="d"
         Title="Server" Height="350" Width="525">
 
     <Window.Resources>
         <converters:IPAddressConverter x:Key="IPAddressConverter"/>
+        <serverConverters:ConnectionsToConnectedConverter x:Key="ConnectionToBoolConverter"/>
         <validationRules:IPAddressRule x:Key="IPAddressRule"/>
     </Window.Resources>
 
@@ -55,7 +57,7 @@
                     </Grid.RowDefinitions>
 
                     <Label>Server-IP-Address</Label>
-                    <TextBox x:Name="serverIpAddress" Margin="5" Grid.Column="1" Height="20">
+                    <TextBox x:Name="serverIpAddress" Margin="5" Grid.Column="1" Height="20" IsEnabled="{Binding Text, ElementName=serverConnections, Converter={StaticResource ConnectionToBoolConverter}}">
                         <TextBox.Text>
                             <Binding Path="ServerAddress" Converter="{StaticResource IPAddressConverter}" Mode="TwoWay">
                                 <Binding.ValidationRules>
@@ -65,14 +67,14 @@
                         </TextBox.Text>
                     </TextBox>
                     <Label Grid.Row="1">Server-Port</Label>
-                    <TextBox Margin="5" Grid.Row="1" Grid.Column="1" Height="20" Text="{Binding ServerPort}"/>
+                    <TextBox Margin="5" Grid.Row="1" Grid.Column="1" Height="20" Text="{Binding ServerPort}" IsEnabled="{Binding Text, ElementName=serverConnections, Converter={StaticResource ConnectionToBoolConverter}}"/>
                 </Grid>
 
                 <StackPanel Margin="10">
                     <Grid>
                         <StackPanel Orientation="Horizontal">
                             <Label>Server-Connections:</Label>
-                            <TextBox IsEnabled="False"  Text="{Binding ServerConnections, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}" Margin="5" Width="50" Height="20"/>
+                            <TextBox IsEnabled="False" x:Name="serverConnections" Text="{Binding ServerConnections, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}" Margin="5" Width="50" Height="20"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                             <Button Width="100" HorizontalAlignment="Right" Margin="5" Content="Add" Command="{Binding AddConnection}">

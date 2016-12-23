@@ -61,12 +61,14 @@ namespace Shared.Data.Managers
                 {
                     bytesRead = stream.EndRead(result);
                 }
-                catch (System.IO.IOException)
+                //IOException, ObjectDisposedException
+                catch (Exception)
                 {
                     return;
                 }
 
                 buffer = new byte[BitConverter.ToInt32(byteSize, 0)];
+                
                 stream.BeginRead(buffer, 0, buffer.Length, callback, null);
             };
 
@@ -78,7 +80,12 @@ namespace Shared.Data.Managers
                 {
                     bytesRead = stream.EndRead(result);
                 }
-                catch (System.IO.IOException)
+                catch (Exception)
+                {
+                    return;
+                }
+
+                if (bytesRead == 0)
                 {
                     return;
                 }

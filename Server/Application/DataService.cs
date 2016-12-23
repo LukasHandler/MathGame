@@ -58,34 +58,37 @@ namespace Server.Application
 
         public DataService(ServerConfiguration configuration)
         {
+            //Initiate relevant properties.
             this.startTime = DateTime.Now;
             this.isActive = true;
             this.Configuration = configuration;
+            this.monitors = new List<Monitor>();
+            this.clients = new List<Client>();
 
+            //Create the actions for clients to server communication.
             MessageProcessor clientMessageProcessor = new MessageProcessor();
             clientMessageProcessor.OnConnectionRequestClient += ConnectionRequestedClient;
             clientMessageProcessor.OnDisconnect += Disconnect;
             clientMessageProcessor.OnAnswer += SubmitAnswer;
             clientMessageProcessor.OnScoreRequest += SendScores;
 
+            //Create actions for monitor to server communication.
             MessageProcessor monitorMessageProcessor = new MessageProcessor();
             monitorMessageProcessor.OnConnectionRequestMonitor += ConnectionRequestedMonitor;
-            monitors = new List<Monitor>();
+            monitorMessageProcessor.OnDisconnect += Disconnect;
 
-            this.clients = new List<Client>();
-
+            //Create actions for server to server communication.
             MessageProcessor serverMessageProcessor = new MessageProcessor();
-
-            serverMessageProcessor.OnConnectionRequestServer += ConnectionRequestServer;
-            serverMessageProcessor.OnConnectionAcceptedServer += ConnectionAcceptedServer;
-            serverMessageProcessor.OnDisconnectServer += DisconnectServer;
-            serverMessageProcessor.OnForwardingMessage += ForwardMessage;
-            serverMessageProcessor.OnServerScoreRequestMessage += ServerScoreRequest;
-            serverMessageProcessor.OnServerScoreResponseMessage += ServerScoreRepsonse;
-
+            serverMessageProcessor.OnConnectionRequestServer += ServerConnectionRequestReceived;
+            serverMessageProcessor.OnConnectionAcceptedServer += ServerConnectionAcceptReceived;
+            serverMessageProcessor.OnDisconnectServer += ServerDisconnectReceived;
+            serverMessageProcessor.OnForwardingMessage += ServerForwardingReceived;
+            serverMessageProcessor.OnServerScoreRequestMessage += ServerScoreRequestReceived;
+            serverMessageProcessor.OnServerScoreResponseMessage += ServerScoreRepsonseReceived;
             serverMessageProcessor.OnServerClientsRequestMessage += ClientsRequestMessage;
             serverMessageProcessor.OnServerClientsResponseMessage += ClientsResponseMessage;
 
+            //Try to start servers, throw exceptions wich given port (or named pipe name) if not possible.
             int port = this.Configuration.ClientPort;
 
             try
@@ -115,9 +118,31 @@ namespace Server.Application
             }
         }
 
-        private void ClientsResponseMessage(object sender, BroadcastResponseMessageEventArgs e)
+        /// <summary>
+        /// Server to server communication. When the active server needs to send a broadcast message he needs to get all client target information from the passive server.
+        /// </summary>
+        /// <param name="sender">The active server.</param>
+        /// <param name="eventArgs">Contains the message request.</param>
+        private void ClientsRequestMessage(object sender, BroadcastRequestMessageEventArgs eventArgs)
         {
-            BroadcastResponseMessage clientsResponseMessage = e.Message;
+            BroadcastRequestMessage broadcastRequestMessage = eventArgs.Message;
+            BroadcastResponseMessage clientsResponseMessage = new BroadcastResponseMessage()
+            {
+                ClientsInformation = this.clients.Select(p => p.TargetInformation).ToList(),
+                MessageToBroadcast = broadcastRequestMessage.MessageToBroadcast
+            };
+
+            this.serverDataManager.WriteData(clientsResponseMessage, this.otherServer.TargetInformation.First());
+        }
+
+        /// <summary>
+        /// Server to server communication. The active servers received the client target information from the passive server and sends the broadcast message to all clients.
+        /// </summary>
+        /// <param name="sender">The passive server.</param>
+        /// <param name="eventArgs">Contains the message response with the passive server client target information.</param>
+        private void ClientsResponseMessage(object sender, BroadcastResponseMessageEventArgs eventArgs)
+        {
+            BroadcastResponseMessage clientsResponseMessage = eventArgs.Message;
             var broadcastMessage = clientsResponseMessage.MessageToBroadcast;
 
             foreach (var client in this.clients)
@@ -131,22 +156,31 @@ namespace Server.Application
             }
         }
 
-        private void ClientsRequestMessage(object sender, BroadcastRequestMessageEventArgs e)
+        /// <summary>
+        /// Server to server communication. The active server needs to answer a highscore request message and asks the passive server for score information.
+        /// </summary>
+        /// <param name="sender">The active server.</param>
+        /// <param name="eventArgs">Contains the message request with the client who wants to be informed about the high scores. This parameter will be sent back to the active server so it knows where to send the scores to.</param>
+        private void ServerScoreRequestReceived(object sender, ServerScoreRequestMessageEventArgs eventArgs)
         {
-            BroadcastRequestMessage broadcastRequestMessage = e.Message;
-            BroadcastResponseMessage clientsResponseMessage = new BroadcastResponseMessage()
+            var serverScoreRequest = eventArgs.Message;
+            ServerScoreResponseMessage serverScoreResponse = new ServerScoreResponseMessage()
             {
-                ClientsInformation = this.clients.Select(p => p.TargetInformation).ToList(),
-                MessageToBroadcast = broadcastRequestMessage.MessageToBroadcast
+                Scores = this.GetScores(),
+                RequestSender = serverScoreRequest.RequestSender
             };
 
-            this.serverDataManager.WriteData(clientsResponseMessage, this.otherServer.TargetInformation.First());
+            this.serverDataManager.WriteData(serverScoreResponse, sender);
         }
 
-        private void ServerScoreRepsonse(object sender, ServerScoreResponseMessageEventArgs e)
+        /// <summary>
+        /// Server to server communication. The active server received the score information and sends it to the client who requested the scores.
+        /// </summary>
+        /// <param name="sender">The passive server.</param>
+        /// <param name="eventArgs">Contains the message response with the scores and the client who wants to be informed about the high scores.</param>
+        private void ServerScoreRepsonseReceived(object sender, ServerScoreResponseMessageEventArgs eventArgs)
         {
-            ServerScoreResponseMessage serverScoreResponse = e.Message;
-
+            ServerScoreResponseMessage serverScoreResponse = eventArgs.Message;
             var scores = this.GetScores();
 
             foreach (var item in serverScoreResponse.Scores)
@@ -162,56 +196,23 @@ namespace Server.Application
             this.clientDataManager.WriteData(scoreResponse, serverScoreResponse.RequestSender);
         }
 
-        private void ServerScoreRequest(object sender, ServerScoreRequestMessageEventArgs e)
+        /// <summary>
+        /// Server to server communication. The passive server doesn't send any messages directly to clients. This method receives a message from the passive server and sends it to the client.
+        /// </summary>
+        /// <param name="sender">The passive server.</param>
+        /// <param name="eventArgs">Contains the forwarding message with the given target.</param>
+        private void ServerForwardingReceived(object sender, ForwardingMessageEventArgs eventArgs)
         {
-            var serverScoreRequest = e.Message;
-            ServerScoreResponseMessage serverScoreResponse = new ServerScoreResponseMessage()
-            {
-                Scores = this.GetScores(),
-                RequestSender = serverScoreRequest.RequestSender
-            };
-
-            this.serverDataManager.WriteData(serverScoreResponse, sender);
-        }
-
-        private void ForwardMessage(object sender, ForwardingMessageEventArgs e)
-        {
-            ForwardingMessage forwardingMessage = e.Message;
+            ForwardingMessage forwardingMessage = eventArgs.Message;
             this.LogText(string.Format("{0} received message from {1} and sent it to {2}", this.Configuration.ServerName, this.otherServer, forwardingMessage.TargetName));
             this.clientDataManager.WriteData(forwardingMessage.InnerMessage, forwardingMessage.Target);
         }
 
-        private void DisconnectServer(object sender, DisconnectServerMessageEventArgs e)
-        {
-            this.serverDataManager.Unregister(sender);
-            this.otherServer.TargetInformation.Remove(this.otherServer.TargetInformation.First(p => p.Equals(sender)));
-            this.OnServerConnectionCountChanged?.Invoke(this, new ServerConnectionCountChangedEventArgs(this.ServerConnectionCount));
-
-            if (this.otherServer.TargetInformation.Count == 0)
-            {
-                this.isActive = true;
-                this.otherServer = null;
-            }
-        }
-
-        private void ConnectionAcceptedServer(object sender, ConnectionAcceptedServerMessageEventArgs e)
-        {
-            ConnectionAcceptServerMessage serverReponse = e.Message;
-            this.isActive = serverReponse.IsTargetActive;
-
-            if (this.otherServer == null)
-            {
-                this.otherServer = new Server(serverReponse.SenderName, sender);
-            }
-            else
-            {
-                this.otherServer.TargetInformation.Add(sender);
-            }
-
-            this.OnServerConnectionCountChanged?.Invoke(this, new ServerConnectionCountChangedEventArgs(this.ServerConnectionCount));
-        }
-
-        public void RegisterToServer(object server)
+        /// <summary>
+        /// Server to server communication. When a server wants to connect to another server. Sending a connection request message.
+        /// </summary>
+        /// <param name="server">The server target information where it connects to.</param>
+        public void ServerRegister(object server)
         {
             this.serverDataManager.Register(server);
 
@@ -224,23 +225,16 @@ namespace Server.Application
             this.serverDataManager.WriteData(connectionRequest, server);
         }
 
-        public void UnregisterFromServer(object server)
+        /// <summary>
+        /// Server to server communication. When a server sends a connection request to another server. Sends a connection accept message back and decides who is the active or passive server.
+        /// </summary>
+        /// <param name="sender">The other server who wants to connect.</param>
+        /// <param name="eventArgs">Contains the request message.</param>
+        private void ServerConnectionRequestReceived(object sender, ConnectionRequestServerMessageEventArgs eventArgs)
         {
-            DisconnectServerMessage disconnect = new DisconnectServerMessage()
-            {
-                LastConnection = this.otherServer.TargetInformation.Count == 1 ? true : false
-            };
+            ConnectionRequestServerMessage request = eventArgs.Message;
 
-            this.serverDataManager.WriteData(disconnect, server);
-            this.serverDataManager.Unregister(server);
-            this.otherServer.TargetInformation.Remove(this.otherServer.TargetInformation.First(p => p.Equals(server)));
-            this.OnServerConnectionCountChanged?.Invoke(this, new ServerConnectionCountChangedEventArgs(this.ServerConnectionCount));
-        }
-
-        private void ConnectionRequestServer(object sender, ConnectionRequestServerMessageEventArgs e)
-        {
-            ConnectionRequestServerMessage request = e.Message;
-
+            //Decide if active or passive server.
             if (request.SenderStartTime == this.startTime)
             {
                 Random randomServerSelector = new Random();
@@ -256,10 +250,10 @@ namespace Server.Application
                 else
                 {
                     this.isActive = false;
-
                 }
             }
 
+            //Send response
             ConnectionAcceptServerMessage response = new ConnectionAcceptServerMessage()
             {
                 SenderName = this.Configuration.ServerName,
@@ -276,7 +270,67 @@ namespace Server.Application
             }
 
             this.OnServerConnectionCountChanged?.Invoke(this, new ServerConnectionCountChangedEventArgs(this.ServerConnectionCount));
-            this.serverDataManager.WriteData(response, this.otherServer.TargetInformation.First());
+            this.serverDataManager.WriteData(response, sender);
+        }
+
+        /// <summary>
+        /// Server to server communication. Gets informed that the connection was accepted and adds the server as passive or active server.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="eventArgs">Contains the connection accepted message with parameters to decide who's active or passive now.</param>
+        private void ServerConnectionAcceptReceived(object sender, ConnectionAcceptedServerMessageEventArgs eventArgs)
+        {
+            ConnectionAcceptServerMessage serverReponse = eventArgs.Message;
+            this.isActive = serverReponse.IsTargetActive;
+
+            if (this.otherServer == null)
+            {
+                this.otherServer = new Server(serverReponse.SenderName, sender);
+            }
+            else
+            {
+                this.otherServer.TargetInformation.Add(sender);
+            }
+
+            this.OnServerConnectionCountChanged?.Invoke(this, new ServerConnectionCountChangedEventArgs(this.ServerConnectionCount));
+        }
+
+        /// <summary>
+        /// Unregisters one server connection.
+        /// </summary>
+        public void ServerUnregister()
+        {
+            DisconnectServerMessage disconnect = new DisconnectServerMessage();
+
+            //Delete the last connection.
+            var server = this.otherServer.TargetInformation.LastOrDefault();
+
+            if (server != null)
+            {
+                this.serverDataManager.WriteData(disconnect, server);
+                this.serverDataManager.Unregister(server);
+                this.otherServer.TargetInformation.Remove(this.otherServer.TargetInformation.Last(p => p.Equals(server)));
+                this.OnServerConnectionCountChanged?.Invoke(this, new ServerConnectionCountChangedEventArgs(this.ServerConnectionCount));
+            }
+        }
+
+        /// <summary>
+        /// Server to server communication. Happens when one server disconnects from the other. Removes a server connection and calls event that the server connection count has changed.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="eventArgs">Contains the disconnect message, which doesn't contain any parameters.</param>
+        private void ServerDisconnectReceived(object sender, DisconnectServerMessageEventArgs eventArgs)
+        {
+            this.serverDataManager.Unregister(sender);
+            this.otherServer.TargetInformation.Remove(this.otherServer.TargetInformation.Last(p => p.Equals(sender)));
+            this.OnServerConnectionCountChanged?.Invoke(this, new ServerConnectionCountChangedEventArgs(this.ServerConnectionCount));
+
+            //If there are no more connections, both server become active again.
+            if (this.otherServer.TargetInformation.Count == 0)
+            {
+                this.isActive = true;
+                this.otherServer = null;
+            }
         }
 
         private void SendScores(object sender, MessageEventArgs e)

@@ -126,7 +126,7 @@ namespace Presentation.ViewModels
                     {
                         if (this.dataService != null)
                         {
-                            this.dataService.RegisterToServer(new IPEndPoint(this.ServerAddress, this.ServerPort));
+                            this.dataService.ServerRegister(new IPEndPoint(this.ServerAddress, this.ServerPort));
                         }
                     };
 
@@ -152,7 +152,7 @@ namespace Presentation.ViewModels
                     {
                         if (this.dataService != null)
                         {
-                            this.dataService.UnregisterFromServer(new IPEndPoint(this.ServerAddress, this.ServerPort));
+                            this.dataService.ServerUnregister();
                         }
                     };
 
@@ -214,7 +214,7 @@ namespace Presentation.ViewModels
                 {
                     dataService = new DataService(configuration);
                 }
-                catch(PortException e)
+                catch (PortException e)
                 {
                     MessageBox.Show(e.Message + Environment.NewLine + "Restart application with new free port", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     Environment.Exit(1);
