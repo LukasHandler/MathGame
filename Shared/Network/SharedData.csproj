@@ -80,7 +80,8 @@
     <Compile Include="Messages\ConnectionAcceptServerMessage.cs" />
     <Compile Include="Messages\ConnectionRequestMonitorMessage.cs" />
     <Compile Include="Messages\ConnectionRequestServerMessage.cs" />
-    <Compile Include="Messages\DisconnectMessage.cs" />
+    <Compile Include="Messages\DisconnectClientMessage.cs" />
+    <Compile Include="Messages\DisconnectMonitorMessage.cs" />
     <Compile Include="Messages\DisconnectServerMessage.cs" />
     <Compile Include="Messages\ForwardingMessage.cs" />
     <Compile Include="Messages\GameLostMessage.cs" />

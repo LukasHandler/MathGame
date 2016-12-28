@@ -9,11 +9,18 @@ namespace Shared.Data.Messages
     [Serializable]
     public class ConnectionAcceptServerMessage : Message
     {
+        public string SenderName { get; set; }
+
         public bool IsTargetActive { get; set; }
 
         public override void ProcessMessage(IMessageVisitor processor)
         {
             processor.ProcessMessage(this);
+        }
+
+        public override string ToString()
+        {
+            return "Connection-Accept-Server-Message";
         }
     }
 }

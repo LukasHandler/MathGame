@@ -9,9 +9,9 @@ namespace Shared.Data.Messages
 {
     [Serializable]
     public abstract class Message
-    {
-        public string SenderName { get; set; }
-        
+    {   
         public abstract void ProcessMessage(IMessageVisitor processor);
+
+        public abstract override string ToString();
     }
 }

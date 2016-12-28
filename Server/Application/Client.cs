@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Server.Application
 {
-    public class Client
+    public class Client : SystemElement
     {
         public object TargetInformation { get; set; }
 

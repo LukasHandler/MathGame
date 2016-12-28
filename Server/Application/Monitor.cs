@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Server.Application
 {
-    public class Monitor
+    public class Monitor : SystemElement
     {
         public object TargetInformation { get; set; }
 

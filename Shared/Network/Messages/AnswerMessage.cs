@@ -15,5 +15,10 @@ namespace Shared.Data.Messages
         {
             processor.ProcessMessage(this);
         }
+
+        public override string ToString()
+        {
+            return string.Format("Answer ({0})", Solution);
+        }
     }
 }

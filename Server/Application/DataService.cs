@@ -1,16 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Shared.Data;
-using System.Net;
 using Shared.Data.Messages;
 using Shared.Data.Managers;
-using System.Reflection;
 using Shared.Data.EventArguments;
 using System.Threading;
-using System.Collections.Concurrent;
 using Server.Application.EventArguments;
 using System.Net.Sockets;
 using Server.Application.Exceptions;
@@ -67,15 +62,15 @@ namespace Server.Application
 
             //Create the actions for clients to server communication.
             MessageProcessor clientMessageProcessor = new MessageProcessor();
-            clientMessageProcessor.OnConnectionRequestClient += ConnectionRequestedClient;
-            clientMessageProcessor.OnDisconnect += Disconnect;
-            clientMessageProcessor.OnAnswer += SubmitAnswer;
-            clientMessageProcessor.OnScoreRequest += SendScores;
+            clientMessageProcessor.OnConnectionRequestClient += ClientConnectionRequest;
+            clientMessageProcessor.OnDisconnectClient += ClientDisconnect;
+            clientMessageProcessor.OnAnswer += ClientSubmitAnswer;
+            clientMessageProcessor.OnScoreRequest += ClientSendScores;
 
             //Create actions for monitor to server communication.
             MessageProcessor monitorMessageProcessor = new MessageProcessor();
-            monitorMessageProcessor.OnConnectionRequestMonitor += ConnectionRequestedMonitor;
-            monitorMessageProcessor.OnDisconnect += Disconnect;
+            monitorMessageProcessor.OnConnectionRequestMonitor += MonitorConnectionRequest;
+            monitorMessageProcessor.OnDisconnectClient += MonitorDisconnect;
 
             //Create actions for server to server communication.
             MessageProcessor serverMessageProcessor = new MessageProcessor();
@@ -85,8 +80,8 @@ namespace Server.Application
             serverMessageProcessor.OnForwardingMessage += ServerForwardingReceived;
             serverMessageProcessor.OnServerScoreRequestMessage += ServerScoreRequestReceived;
             serverMessageProcessor.OnServerScoreResponseMessage += ServerScoreRepsonseReceived;
-            serverMessageProcessor.OnServerClientsRequestMessage += ClientsRequestMessage;
-            serverMessageProcessor.OnServerClientsResponseMessage += ClientsResponseMessage;
+            serverMessageProcessor.OnServerClientsRequestMessage += ServerClientsRequestMessage;
+            serverMessageProcessor.OnServerClientsResponseMessage += ServerClientsResponseMessage;
 
             //Try to start servers, throw exceptions wich given port (or named pipe name) if not possible.
             int port = this.Configuration.ClientPort;
@@ -123,15 +118,18 @@ namespace Server.Application
         /// </summary>
         /// <param name="sender">The active server.</param>
         /// <param name="eventArgs">Contains the message request.</param>
-        private void ClientsRequestMessage(object sender, BroadcastRequestMessageEventArgs eventArgs)
+        private void ServerClientsRequestMessage(object sender, BroadcastRequestMessageEventArgs eventArgs)
         {
             BroadcastRequestMessage broadcastRequestMessage = eventArgs.Message;
+            this.LogReceivedText(broadcastRequestMessage, this.otherServer);
+
             BroadcastResponseMessage clientsResponseMessage = new BroadcastResponseMessage()
             {
                 ClientsInformation = this.clients.Select(p => p.TargetInformation).ToList(),
                 MessageToBroadcast = broadcastRequestMessage.MessageToBroadcast
             };
 
+            this.LogSentText(clientsResponseMessage, this.otherServer);
             this.serverDataManager.WriteData(clientsResponseMessage, this.otherServer.TargetInformation.First());
         }
 
@@ -140,19 +138,25 @@ namespace Server.Application
         /// </summary>
         /// <param name="sender">The passive server.</param>
         /// <param name="eventArgs">Contains the message response with the passive server client target information.</param>
-        private void ClientsResponseMessage(object sender, BroadcastResponseMessageEventArgs eventArgs)
+        private void ServerClientsResponseMessage(object sender, BroadcastResponseMessageEventArgs eventArgs)
         {
-            BroadcastResponseMessage clientsResponseMessage = eventArgs.Message;
-            var broadcastMessage = clientsResponseMessage.MessageToBroadcast;
+            BroadcastResponseMessage broadcastResponseMessage = eventArgs.Message;
+            this.LogReceivedText(broadcastResponseMessage, this.otherServer);
 
+            var broadcastMessage = broadcastResponseMessage.MessageToBroadcast;
+
+            //Send message to this server's clients.
             foreach (var client in this.clients)
             {
+                this.LogSentText(broadcastMessage, client);
                 this.clientDataManager.WriteData(broadcastMessage, client.TargetInformation);
             }
 
-            foreach (var item in clientsResponseMessage.ClientsInformation)
+            //Send message to passive server's clients.
+            foreach (var client in broadcastResponseMessage.ClientsInformation)
             {
-                this.clientDataManager.WriteData(broadcastMessage, item);
+                this.LogText("{0} sent {1} to {2}", this.ToString(), broadcastMessage.ToString(), client.ToString());
+                this.clientDataManager.WriteData(broadcastMessage, client);
             }
         }
 
@@ -163,14 +167,17 @@ namespace Server.Application
         /// <param name="eventArgs">Contains the message request with the client who wants to be informed about the high scores. This parameter will be sent back to the active server so it knows where to send the scores to.</param>
         private void ServerScoreRequestReceived(object sender, ServerScoreRequestMessageEventArgs eventArgs)
         {
-            var serverScoreRequest = eventArgs.Message;
-            ServerScoreResponseMessage serverScoreResponse = new ServerScoreResponseMessage()
+            var serverScoreRequestMessage = eventArgs.Message;
+            this.LogReceivedText(serverScoreRequestMessage, this.otherServer);
+
+            ServerScoreResponseMessage serverScoreResponseMessage = new ServerScoreResponseMessage()
             {
                 Scores = this.GetScores(),
-                RequestSender = serverScoreRequest.RequestSender
+                RequestSender = serverScoreRequestMessage.RequestSender
             };
 
-            this.serverDataManager.WriteData(serverScoreResponse, sender);
+            this.LogSentText(serverScoreResponseMessage, this.otherServer);
+            this.serverDataManager.WriteData(serverScoreResponseMessage, sender);
         }
 
         /// <summary>
@@ -180,20 +187,23 @@ namespace Server.Application
         /// <param name="eventArgs">Contains the message response with the scores and the client who wants to be informed about the high scores.</param>
         private void ServerScoreRepsonseReceived(object sender, ServerScoreResponseMessageEventArgs eventArgs)
         {
-            ServerScoreResponseMessage serverScoreResponse = eventArgs.Message;
+            ServerScoreResponseMessage serverScoreResponseMessage = eventArgs.Message;
+            this.LogReceivedText(serverScoreResponseMessage, this.otherServer);
+
             var scores = this.GetScores();
 
-            foreach (var item in serverScoreResponse.Scores)
+            foreach (var item in serverScoreResponseMessage.Scores)
             {
                 scores.Add(item);
             }
 
-            ScoresResponseMessage scoreResponse = new ScoresResponseMessage()
+            ScoresResponseMessage scoreResponseMessage = new ScoresResponseMessage()
             {
                 Scores = scores.OrderByDescending(p => p.Score).ToList()
             };
 
-            this.clientDataManager.WriteData(scoreResponse, serverScoreResponse.RequestSender);
+            this.LogSentText(scoreResponseMessage, this.otherServer);
+            this.clientDataManager.WriteData(scoreResponseMessage, serverScoreResponseMessage.RequestSender);
         }
 
         /// <summary>
@@ -204,7 +214,8 @@ namespace Server.Application
         private void ServerForwardingReceived(object sender, ForwardingMessageEventArgs eventArgs)
         {
             ForwardingMessage forwardingMessage = eventArgs.Message;
-            this.LogText(string.Format("{0} received message from {1} and sent it to {2}", this.Configuration.ServerName, this.otherServer, forwardingMessage.TargetName));
+            this.LogReceivedText(forwardingMessage, this.otherServer);
+            this.LogSentText(forwardingMessage.InnerMessage, this.otherServer);
             this.clientDataManager.WriteData(forwardingMessage.InnerMessage, forwardingMessage.Target);
         }
 
@@ -216,13 +227,14 @@ namespace Server.Application
         {
             this.serverDataManager.Register(server);
 
-            ConnectionRequestServerMessage connectionRequest = new ConnectionRequestServerMessage()
+            ConnectionRequestServerMessage connectionRequestMessage = new ConnectionRequestServerMessage()
             {
                 SenderStartTime = this.startTime,
                 SenderName = this.Configuration.ServerName
             };
 
-            this.serverDataManager.WriteData(connectionRequest, server);
+            this.LogText("{0} sent {1} to {2}", this.ToString(), connectionRequestMessage.ToString(), server.ToString());
+            this.serverDataManager.WriteData(connectionRequestMessage, server);
         }
 
         /// <summary>
@@ -233,6 +245,7 @@ namespace Server.Application
         private void ServerConnectionRequestReceived(object sender, ConnectionRequestServerMessageEventArgs eventArgs)
         {
             ConnectionRequestServerMessage request = eventArgs.Message;
+            LogReceivedText(request, this.otherServer);
 
             //Decide if active or passive server.
             if (request.SenderStartTime == this.startTime)
@@ -270,22 +283,25 @@ namespace Server.Application
             }
 
             this.OnServerConnectionCountChanged?.Invoke(this, new ServerConnectionCountChangedEventArgs(this.ServerConnectionCount));
+            this.LogSentText(response, this.otherServer);
             this.serverDataManager.WriteData(response, sender);
         }
 
         /// <summary>
         /// Server to server communication. Gets informed that the connection was accepted and adds the server as passive or active server.
         /// </summary>
-        /// <param name="sender">The sender.</param>
+        /// <param name="sender">The sender server.</param>
         /// <param name="eventArgs">Contains the connection accepted message with parameters to decide who's active or passive now.</param>
         private void ServerConnectionAcceptReceived(object sender, ConnectionAcceptedServerMessageEventArgs eventArgs)
         {
-            ConnectionAcceptServerMessage serverReponse = eventArgs.Message;
-            this.isActive = serverReponse.IsTargetActive;
+            ConnectionAcceptServerMessage serverReponseMessage = eventArgs.Message;
+            LogReceivedText(serverReponseMessage, this.otherServer);
+
+            this.isActive = serverReponseMessage.IsTargetActive;
 
             if (this.otherServer == null)
             {
-                this.otherServer = new Server(serverReponse.SenderName, sender);
+                this.otherServer = new Server(serverReponseMessage.SenderName, sender);
             }
             else
             {
@@ -300,17 +316,29 @@ namespace Server.Application
         /// </summary>
         public void ServerUnregister()
         {
-            DisconnectServerMessage disconnect = new DisconnectServerMessage();
+            DisconnectServerMessage disconnectMessage = new DisconnectServerMessage();
 
             //Delete the last connection.
             var server = this.otherServer.TargetInformation.LastOrDefault();
 
             if (server != null)
             {
-                this.serverDataManager.WriteData(disconnect, server);
+                this.LogSentText(disconnectMessage, this.otherServer);
+                this.serverDataManager.WriteData(disconnectMessage, server);
                 this.serverDataManager.Unregister(server);
                 this.otherServer.TargetInformation.Remove(this.otherServer.TargetInformation.Last(p => p.Equals(server)));
                 this.OnServerConnectionCountChanged?.Invoke(this, new ServerConnectionCountChangedEventArgs(this.ServerConnectionCount));
+
+                if (this.ServerConnectionCount == 0)
+                {
+                    this.LogText("{0} disconnected from {1}", this.ToString(), this.otherServer.ToString());
+                    this.isActive = true;
+                    this.otherServer = null;
+                }
+                else
+                {
+                    this.LogText("{0} closed a connection to {1}", this.ToString(), this.otherServer.ToString());
+                }
             }
         }
 
@@ -321,23 +349,73 @@ namespace Server.Application
         /// <param name="eventArgs">Contains the disconnect message, which doesn't contain any parameters.</param>
         private void ServerDisconnectReceived(object sender, DisconnectServerMessageEventArgs eventArgs)
         {
+            this.LogReceivedText(eventArgs.Message, this.otherServer);
             this.serverDataManager.Unregister(sender);
             this.otherServer.TargetInformation.Remove(this.otherServer.TargetInformation.Last(p => p.Equals(sender)));
             this.OnServerConnectionCountChanged?.Invoke(this, new ServerConnectionCountChangedEventArgs(this.ServerConnectionCount));
 
             //If there are no more connections, both server become active again.
-            if (this.otherServer.TargetInformation.Count == 0)
+            if (this.ServerConnectionCount == 0)
             {
+                this.LogText("{0} disconnected from {1}", this.otherServer.ToString(), this.ToString());
                 this.isActive = true;
                 this.otherServer = null;
             }
+            else
+            {
+                this.LogText("{0} closed a connection to {1}", this.otherServer.ToString(), this.ToString());
+            }
         }
 
-        private void SendScores(object sender, MessageEventArgs e)
+        /// <summary>
+        /// Clients to server connection. When the client wants to establish a connection with the server, the server validates if the client is allowed to connect.
+        /// </summary>
+        /// <param name="sender">The client which want to connect.</param>
+        /// <param name="eventArgs">Contains the connection request message with the name of the client.</param>
+        private void ClientConnectionRequest(object sender, ConnectionRequestClientMessageEventArgs eventArgs)
         {
-            ScoresRequestMessage requestMessage = e.MessageContent as ScoresRequestMessage;
+            ConnectionRequestClientMessage message = eventArgs.Message;
+            var senderName = message.SenderName;
+            this.LogText("{0} received {1} from {2}", this.ToString(), message.ToString(), senderName);
+
+            var client = this.GetClientFromSenderInformation(sender);
+
+            //If this client is already connected or a player with the same name is playing, deny the connection.
+            if (client != null || this.clients.Any(p => p.Name == senderName))
+            {
+                ConnectionDeniedMessage deniedMessage = new ConnectionDeniedMessage();
+                this.SendClientMessage(deniedMessage, sender);
+                LogText("{0} sent {1} to {2}", this.ToString(), deniedMessage.ToString(), senderName);
+            }
+            else
+            {
+                //Create new client.
+                client = new Client(senderName, this.Configuration.MinScore, this.Configuration.MaxScore, sender);
+                client.MinScoreReached += ClientLost;
+                client.MaxScoreReached += ClientWon;
+                this.clients.Add(client);
+                this.LogText("{0} connected to {1}", client.ToString(), this.ToString());
+
+                //Send accept message.
+                ConnectionAcceptMessage acceptedMessage = new ConnectionAcceptMessage();
+                this.SendClientMessage(acceptedMessage, sender);
+
+                this.CreateQuestion(client);
+            }
+        }
+
+        /// <summary>
+        /// Client to server communication. A client wants to get the scores. The server needs to ask the possible other server for his scores.
+        /// </summary>
+        /// <param name="sender">The client who asks for the scores.</param>
+        /// <param name="eventArgs">Contains the scores request message, which doesn't contain any parameters.</param>
+        private void ClientSendScores(object sender, MessageEventArgs eventArgs)
+        {
+            ScoresRequestMessage requestMessage = eventArgs.MessageContent as ScoresRequestMessage;
+            this.LogReceivedClient(requestMessage, sender);
             List<ScoreEntry> scores = GetScores();
 
+            //If there is no other server, send the scores.
             if (this.otherServer == null)
             {
                 ScoresResponseMessage responseMessage = new ScoresResponseMessage()
@@ -345,61 +423,67 @@ namespace Server.Application
                     Scores = scores
                 };
 
-                this.clientDataManager.WriteData(responseMessage, sender);
+                this.SendClientMessage(responseMessage, sender);
             }
             else
             {
+                //If there is another server, and this server is active, ask for the passive server scores.
                 if (this.isActive)
                 {
-                    ServerScoreRequestMessage serverRequestMessage = new ServerScoreRequestMessage() { RequestSender = sender };
-                    this.serverDataManager.WriteData(serverRequestMessage, this.otherServer.TargetInformation.First());
+                    ServerScoreRequestMessage serverScoreRequestMessage = new ServerScoreRequestMessage() { RequestSender = sender };
+                    this.LogSentText(serverScoreRequestMessage, this.otherServer);
+                    this.serverDataManager.WriteData(serverScoreRequestMessage, this.otherServer.TargetInformation.First());
                 }
+                //If there is another server, and this server is passive, send the passive server the scores with information which client requested the scores.
                 else
                 {
-                    ServerScoreResponseMessage serverResponseMessage = new ServerScoreResponseMessage()
+                    ServerScoreResponseMessage serverScoreResponseMessage = new ServerScoreResponseMessage()
                     {
                         RequestSender = sender,
                         Scores = scores
                     };
-                    this.serverDataManager.WriteData(serverResponseMessage, this.otherServer.TargetInformation.First());
+
+                    this.LogSentText(serverScoreResponseMessage, this.otherServer);
+                    this.serverDataManager.WriteData(serverScoreResponseMessage, this.otherServer.TargetInformation.First());
                 }
             }
-
         }
 
-        private List<ScoreEntry> GetScores()
+        /// <summary>
+        /// Client to server communication. Validates the answer a client submitted and sends the new question containing the current points.
+        /// </summary>
+        /// <param name="sender">The client, who submitted the answer.</param>
+        /// <param name="eventArgs">Contains the answer message.</param>
+        private void ClientSubmitAnswer(object sender, AnswerMessageEventArgs eventArgs)
         {
-            return this.clients.Select(p => new ScoreEntry(p.Name, p.Score)).OrderByDescending(p => p.Score).ToList();
-        }
+            AnswerMessage answerMessage = eventArgs.Message;
+            this.LogReceivedClient(answerMessage, sender);
+            var client = this.clients.FirstOrDefault(p => p.TargetInformation.Equals(sender));
 
-        private void SubmitAnswer(object sender, AnswerMessageEventArgs e)
-        {
-            AnswerMessage answerMessage = e.Message;
-            var client = this.clients.First(p => p.TargetInformation.Equals(sender));
-
-            if (client.Score < this.Configuration.MaxScore &&
+            //Is the client valid?
+            if (client != null &&
+                client.Score < this.Configuration.MaxScore &&
                 client.Score > this.Configuration.MinScore)
             {
-                string logMessage = string.Format("Answer {0} from {1} to {2}. ", answerMessage.Solution, client.Name, this.Configuration.ServerName);
+                string logMessage = string.Format("Answer ({0}) from {1} is ", answerMessage.Solution, client.Name);
 
+                //Dispose the timer for the question.
                 if (client.QuestionTimer != null)
                 {
                     client.QuestionTimer.Dispose();
                 }
-                else
-                {
-                    throw new NotImplementedException();
-                }
 
+                //If correct:
                 if (answerMessage.Solution == client.Question.Answer)
                 {
-                    logMessage += "Right. Score: " + (client.Score + 1);
+                    logMessage += "right. New score: " + (client.Score + 1);
                     this.LogText(logMessage);
                     client.Score++;
                 }
+                //If incorrect:
                 else
                 {
-                    logMessage += "Wrong. Score: " + (client.Score - 1);
+                    logMessage += "wrong. New score: " + (client.Score - 1);
                     this.LogText(logMessage);
                     client.Score--;
                 }
@@ -408,113 +492,142 @@ namespace Server.Application
             }
         }
 
-        private void ConnectionRequestedMonitor(object sender, MessageEventArgs e)
+        /// <summary>
+        /// Disconnects the client.
+        /// </summary>
+        /// <param name="sender">The client who wants to disconnect.</param>
+        /// <param name="eventArgs">Contains the client disconnect message.</param>
+        private void ClientDisconnect(object sender, MessageEventArgs eventArgs)
         {
-            ConnectionRequestMonitorMessage request = (ConnectionRequestMonitorMessage)e.MessageContent;
-            LogText(string.Format("Connection request from Monitor ({0}) to {1}", sender, this.Configuration.ServerName));
-
-            if (this.monitors.Contains(sender))
-            {
-                ConnectionDeniedMessage deniedMessage = new ConnectionDeniedMessage();
-                monitorDataManager.WriteData(deniedMessage, sender);
-                LogText(string.Format("Connection denied from {0} to Monitor ({1})", this.Configuration.ServerName, sender));
-            }
-            else
-            {
-                this.monitors.Add(new Monitor(sender));
-                ConnectionAcceptMessage acceptMessage = new ConnectionAcceptMessage();
-                monitorDataManager.WriteData(acceptMessage, sender);
-                LogText(string.Format("Connection accepted from {0} to Monitor ({1})", this.Configuration.ServerName, sender));
-            }
-        }
-
-        private void Disconnect(object sender, MessageEventArgs e)
-        {
-            DisconnectMessage disconnectMessage = (DisconnectMessage)e.MessageContent;
+            this.LogReceivedClient(eventArgs.MessageContent, sender);
             Client client = this.GetClientFromSenderInformation(sender);
-            Monitor monitor = this.monitors.FirstOrDefault(p => p.TargetInformation.Equals(sender));
 
+            //Is this client even connected?
             if (this.clients.Contains(client))
             {
+                //Stop question timer
                 if (client.QuestionTimer != null)
                 {
                     client.QuestionTimer.Dispose();
-                    client.QuestionTimer = null;
                 }
-
+                
                 LogText(string.Format("{0} disconnected from {1}", client.Name, this.Configuration.ServerName));
                 this.clients.Remove(client);
             }
-            else if (monitor != null)
-            {
-                LogText(string.Format("Monitor ({0}) disconnected from {1}", sender, this.Configuration.ServerName));
-                this.monitors.Remove(monitor);
-            }
-            else
-            {
-                throw new NotImplementedException();
-            }
         }
 
-        private void ConnectionRequestedClient(object sender, ConnectionRequestClientMessageEventArgs e)
-        {
-            ConnectionRequestClientMessage message = e.Message;
-            var senderName = message.SenderName;
-
-            LogText(string.Format("Connection request from {0} to {1}", senderName, this.Configuration.ServerName));
-            var client = this.GetClientFromSenderInformation(sender);
-
-            if (client != null || this.clients.Any(p => p.Name == senderName))
-            {
-                ConnectionDeniedMessage deniedMessage = new ConnectionDeniedMessage();
-                this.SendClientMessage(deniedMessage, sender);
-                //clientDataManager.WriteData(deniedMessage, sender);
-                LogText(string.Format("Connection denied from {0} to {1}", this.Configuration.ServerName, senderName));
-            }
-            else
-            {
-                client = new Client(senderName, this.Configuration.MinScore, this.Configuration.MaxScore, sender);
-                client.MinScoreReached += ClientLost;
-                client.MaxScoreReached += ClientWon;
-                this.clients.Add(client);
-                ConnectionAcceptMessage acceptedMessage = new ConnectionAcceptMessage();
-                //clientDataManager.WriteData(acceptedMessage, sender);
-                this.SendClientMessage(acceptedMessage, sender);
-                this.LogText(string.Format("Connection accepted from {0} to {1}", this.Configuration.ServerName, senderName));
-
-                this.CreateQuestion(client);
-            }
-
-        }
-
-        private void ClientWon(object sender, EventArgs e)
+        /// <summary>
+        /// Happens when the client won the game by reaching the max points.
+        /// </summary>
+        /// <param name="sender">The client (client class, not the target information) who won.</param>
+        /// <param name="eventArgs">Contains no important information.</param>
+        private void ClientWon(object sender, EventArgs eventArgs)
         {
             var client = sender as Client;
+            string message = string.Format("{0} won", client.ToString());
+            this.LogText(message);
 
+            //Send won message.
             GameWonMessage wonMessage = new GameWonMessage()
             {
                 Score = client.Score
             };
 
             this.SendClientMessage(wonMessage, client.TargetInformation);
-            var message = string.Format("{0} won.", client.Name);
-            this.LogText(message);
+
+            //Broadcast a win to all other clients.
             this.SendBroadcastText(message);
         }
 
+        /// <summary>
+        /// Happens when the client lost the game by reaching the min points.
+        /// </summary>
+        /// <param name="sender">The client (client class, not the target information) who lost.</param>
+        /// <param name="eventArgs">Contains no important information.</param>
+        private void ClientLost(object sender, EventArgs eventArgs)
+        {
+            var client = sender as Client;
+            string message = string.Format("{0} lost", client.ToString());
+            this.LogText(message);
+
+            //Send lost message.
+            GameLostMessage lostMessage = new GameLostMessage()
+            {
+                Score = client.Score
+            };
+
+            this.SendClientMessage(lostMessage, client.TargetInformation);
+
+            //Broadcast a loss to all other clients.
+            this.SendBroadcastText(message);
+        }
+
+        /// <summary>
+        /// Monitor to server communication. When the monitor sends a connection request.
+        /// </summary>
+        /// <param name="sender">The monitor which wants to connect.</param>
+        /// <param name="eventArgs">Contains no useful data.</param>
+        private void MonitorConnectionRequest(object sender, MessageEventArgs eventArgs)
+        {
+            LogText(string.Format("Connection request from Monitor ({0}) to {1}", sender, this.Configuration.ServerName));
+            this.LogReceivedMonitor(eventArgs.MessageContent, sender);
+            var monitor = this.monitors.FirstOrDefault(p => p.TargetInformation.Equals(sender));
+
+            //Allow connection depending on if the monitor is already connected or not.
+            if (monitor != null)
+            {
+                ConnectionDeniedMessage deniedMessage = new ConnectionDeniedMessage();
+                this.LogSentText(deniedMessage, monitor);
+                monitorDataManager.WriteData(deniedMessage, sender);
+            }
+            else
+            {
+                monitor = new Monitor(sender);
+                this.monitors.Add(monitor);
+                ConnectionAcceptMessage acceptMessage = new ConnectionAcceptMessage();
+                this.LogText("{0} connected to {1}", monitor.ToString(), this.ToString());
+                this.LogSentText(acceptMessage, monitor);
+                monitorDataManager.WriteData(acceptMessage, sender);
+            }
+        }
+
+        /// <summary>
+        /// Monitor to server communication. When the monitor wants to disconnect.
+        /// </summary>
+        /// <param name="sender">The monitor which wants to disconnect.</param>
+        /// <param name="eventArgs">Contains no useful data.</param>
+        private void MonitorDisconnect(object sender, MessageEventArgs eventArgs)
+        {
+            Monitor monitor = this.monitors.FirstOrDefault(p => p.TargetInformation.Equals(sender));
+            this.LogReceivedMonitor(eventArgs.MessageContent, monitor);
+
+            //Is this monitor even connected?
+            if (monitor != null)
+            {
+                LogText("{0} disconnected from {1}", monitor.ToString(), this.ToString());
+                this.monitors.Remove(monitor);
+            }
+        }
+
+        /// <summary>
+        /// Sends the broadcast text. Needs to transmit information if there is another server connected to receive all connected clients with the system.
+        /// </summary>
+        /// <param name="text">The text, which needs to be broadcasted.</param>
         private void SendBroadcastText(string text)
         {
             BroadcastMessage broadcastMessage = new BroadcastMessage() { Text = text };
 
+            //If there is no other server connected send the message to the clients.
             if (this.otherServer == null)
             {
                 foreach (var client in this.clients)
                 {
-                    this.clientDataManager.WriteData(broadcastMessage, client.TargetInformation);
+                    SendClientMessage(broadcastMessage, client.TargetInformation);
                 }
             }
             else
             {
+                //If there is another server connected extra communication is necessary.
                 if (this.isActive)
                 {
                     BroadcastRequestMessage broadcastRequestMessage = new BroadcastRequestMessage()
@@ -522,6 +635,7 @@ namespace Server.Application
                         MessageToBroadcast = broadcastMessage
                     };
 
+                    this.LogSentText(broadcastRequestMessage, this.otherServer);
                     this.serverDataManager.WriteData(broadcastRequestMessage, this.otherServer.TargetInformation.First());
                 }
                 else
@@ -532,84 +646,69 @@ namespace Server.Application
                         MessageToBroadcast = broadcastMessage
                     };
 
+                    this.LogSentText(broadcastResponseMessage, this.otherServer);
                     this.serverDataManager.WriteData(broadcastResponseMessage, this.otherServer.TargetInformation.First());
                 }
             }
         }
 
-        private void ClientLost(object sender, EventArgs e)
+        /// <summary>
+        /// Logs the text.
+        /// </summary>
+        /// <param name="loggingText">The logging text.</param>
+        private void LogText(string loggingText, params string[] arguments)
         {
-            var client = sender as Client;
-            GameLostMessage lostMessage = new GameLostMessage()
-            {
-                Score = client.Score
-            };
-
-            this.SendClientMessage(lostMessage, client.TargetInformation);
-            var message = string.Format("{0} lost.", client.Name);
-            this.LogText(message);
-            this.SendBroadcastText(message);
-        }
-
-        private void LogText(string loggingText)
-        {
-            if (this.OnLoggingMessage != null)
-            {
-                //this.OnLoggingMessage(this, new LoggingEventArgs(loggingText));
-            }
-
             LoggingMessage loggingMessage = new LoggingMessage()
             {
-                Text = loggingText
+                Text = string.Format(loggingText, arguments)
             };
 
             monitors.ForEach(p => monitorDataManager.WriteData(loggingMessage, p.TargetInformation));
-
-            #region reflectionLogging
-            //var message = e.MessageContent;
-            //Type messageType = message.GetType();
-
-            //string messageName = messageType.Name.Split(new string[] { "Message" }, StringSplitOptions.RemoveEmptyEntries)[0];
-            //string senderIp = message.SenderEndPoint.ToString();
-
-            //string recipientIp = e.Recipient.ToString();
-            //recipientIp += string.Format(" ({0}) ", serverName);
-
-            //if (clients.Any(p => IPEndPoint.Equals(p, message.SenderEndPoint)))
-            //{
-            //    senderIp += string.Format(" ({0}) ", clients.First(p => IPEndPoint.Equals(p, message.SenderEndPoint)));
-            //}
-
-            //var properties = messageType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
-            //string propertyStrings = string.Empty;
-
-            //fullLoggingText = string.Format("{0} from {1} to {2}", messageName, senderIp, recipientIp);
-
-            //if (properties.Count() != 0)
-            //{
-            //    foreach (var property in properties)
-            //    {
-            //        if (property.Name != "SenderEndPoint")
-            //        {
-            //            propertyStrings += string.Format("{0}: {1},", property.Name, property.GetValue(message));
-            //        }
-            //    }
-
-            //    fullLoggingText += " arguments " + propertyStrings;
-            //}
-            #endregion
         }
 
+        private void LogReceivedText(Message message, SystemElement from)
+        {
+            this.LogText("{0} received {1} from {2}", this.ToString(), message.ToString(), from.ToString());
+        }
+
+        private void LogSentText(Message message, SystemElement to)
+        {
+            this.LogText("{0} sent {1} to {2}", this.ToString(), message.ToString(), to.ToString());
+        }
+
+        private void LogReceivedClient(Message message, object clientTarget)
+        {
+            var client = GetClientFromSenderInformation(clientTarget);
+
+            if (client != null)
+                this.LogReceivedText(message, client);
+            else
+                this.LogText("{0} received {1} from {2}", this.ToString(), message.ToString(), clientTarget.ToString());
+        }
+
+        private void LogReceivedMonitor(Message message, object monitorTarget)
+        {
+            var monitor = this.monitors.FirstOrDefault(p => p.TargetInformation.Equals(monitorTarget));
+
+            if (monitor != null)
+                this.LogReceivedText(message, monitor);
+            else
+                this.LogText("{0} received {1} from {2}", this.ToString(), message.ToString(), monitorTarget.ToString());
+        }
+
+        /// <summary>
+        /// Creates the question for a client.
+        /// </summary>
+        /// <param name="client">The client.</param>
         private void CreateQuestion(Client client)
         {
             if (client.Score < this.Configuration.MaxScore &&
                 client.Score > this.Configuration.MinScore)
             {
+                //Get a random question.
                 var questionCount = QuestionAccessor.MathQuestions.Count;
-
                 Random randomQuestionGenerator = new Random();
                 int questionIndex = randomQuestionGenerator.Next(0, questionCount);
-
                 MathQuestion question = QuestionAccessor.MathQuestions[questionIndex];
 
                 QuestionMessage questionMessage = new QuestionMessage()
@@ -620,40 +719,75 @@ namespace Server.Application
                     Score = client.Score
                 };
 
-                this.LogText(string.Format("Question {0} sent from {1} to {2}", questionMessage.QuestionText, this.Configuration.ServerName, client.Name));
-                //clientDataManager.WriteData(questionMessage, this.clientsTargetInformation[client]);
                 this.SendClientMessage(questionMessage, client.TargetInformation);
 
+                //Start question timer.
                 client.Question = question;
                 client.QuestionTimer = new Timer(this.QuestionTimeExpired, client, question.Time * 1000, Timeout.Infinite);
             }
         }
 
-        private void QuestionTimeExpired(object state)
+        /// <summary>
+        /// When the question time expires, the question is marked as wrong.
+        /// </summary>
+        /// <param name="clientState">The client who timed out the question answering time.</param>
+        private void QuestionTimeExpired(object clientState)
         {
-            Client client = (Client)state;
+            Client client = (Client)clientState;
             this.LogText(string.Format("{0} expired the question answer time. Score: {1}", client.Name, client.Score - 1));
             client.Score--;
             this.CreateQuestion(client);
         }
 
+        /// <summary>
+        /// Gets the client from sender information.
+        /// </summary>
+        /// <param name="senderInformation">The sender information.</param>
+        /// <returns>The client to the sender information. Null if there was no match.</returns>
         private Client GetClientFromSenderInformation(object senderInformation)
         {
             return this.clients.FirstOrDefault(p => p.TargetInformation.Equals(senderInformation));
         }
 
+        /// <summary>
+        /// Sends the client message. If there is an active server connected, we need to forward the message to it.
+        /// </summary>
+        /// <param name="message">The message.</param>
+        /// <param name="target">The target.</param>
         private void SendClientMessage(Message message, object target)
         {
             if (this.isActive)
             {
+                var client = GetClientFromSenderInformation(target);
+
+                if (client != null)
+                    this.LogSentText(message, client);
+                else
+                    this.LogText("{0} sent {1} to {2}", this.ToString(), message.ToString(), target.ToString());
+
                 this.clientDataManager.WriteData(message, target);
             }
             else
             {
-                this.LogText(string.Format("{0} sent message to {1}", this.Configuration.ServerName, this.otherServer));
+                //Send forwarding message to active server.
+                this.LogSentText(message, this.otherServer);
                 ForwardingMessage forwardingMessage = new ForwardingMessage() { InnerMessage = message, Target = target, TargetName = this.GetClientFromSenderInformation(target).Name };
                 this.serverDataManager.WriteData(forwardingMessage, this.otherServer.TargetInformation.First());
             }
+        }
+
+        /// <summary>
+        /// Gets the scores.
+        /// </summary>
+        /// <returns>A list of score entries.</returns>
+        private List<ScoreEntry> GetScores()
+        {
+            return this.clients.Select(p => new ScoreEntry(p.Name, p.Score)).OrderByDescending(p => p.Score).ToList();
+        }
+
+        public override string ToString()
+        {
+            return this.Configuration.ServerName;
         }
     }
 }

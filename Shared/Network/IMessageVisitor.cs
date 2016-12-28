@@ -24,7 +24,9 @@ namespace Shared.Data
         void ProcessMessage(DisconnectServerMessage message);
 
         void ProcessMessage(ConnectionAcceptMessage message);
+
         void ProcessMessage(ConnectionAcceptServerMessage connectionAcceptServerMessage);
+
         void ProcessMessage(ConnectionDeniedMessage message);
 
         void ProcessMessage(ConnectionRequestClientMessage message);
@@ -39,7 +41,9 @@ namespace Shared.Data
 
         void ProcessMessage(QuestionMessage message);
 
-        void ProcessMessage(DisconnectMessage message);
+        void ProcessMessage(DisconnectClientMessage message);
+
+        void ProcessMessage(DisconnectMonitorMessage message);
 
         void ProcessMessage(LoggingMessage message);
 

@@ -43,7 +43,9 @@ namespace Shared.Data
 
         public EventHandler<QuestionMessageEventArgs> OnQuestion;
 
-        public EventHandler<MessageEventArgs> OnDisconnect;
+        public EventHandler<MessageEventArgs> OnDisconnectClient;
+
+        public EventHandler<MessageEventArgs> OnDisconnectMonitor;
 
         public EventHandler<DisconnectServerMessageEventArgs> OnDisconnectServer;
 
@@ -130,9 +132,14 @@ namespace Shared.Data
             this.OnConnectionAccepted?.Invoke(this.senderInformation[message], new MessageEventArgs(message));
         }
 
-        public void ProcessMessage(DisconnectMessage message)
+        public void ProcessMessage(DisconnectClientMessage message)
         {
-            this.OnDisconnect?.Invoke(this.senderInformation[message], new MessageEventArgs(message));
+            this.OnDisconnectClient?.Invoke(this.senderInformation[message], new MessageEventArgs(message));
+        }
+
+        public void ProcessMessage(DisconnectMonitorMessage message)
+        {
+            this.OnDisconnectMonitor?.Invoke(this.senderInformation[message], new MessageEventArgs(message));
         }
 
         public void ProcessMessage(DisconnectServerMessage message)

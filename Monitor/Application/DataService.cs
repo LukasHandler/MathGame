@@ -62,7 +62,7 @@ namespace Monitor.Application
         {
             if (isConnected)
             {
-                DisconnectMessage disconnectMessage = new DisconnectMessage();
+                DisconnectClientMessage disconnectMessage = new DisconnectClientMessage();
 
                 clientManager.WriteData(disconnectMessage, serverEndPoint);
                 clientManager.Unregister(serverEndPoint);

@@ -116,7 +116,7 @@ namespace Client.Application
             this.clientName = playerName;
             serverEndPoint = server;
 
-            ConnectionRequestClientMessage request = new ConnectionRequestClientMessage();
+            ConnectionRequestClientMessage request = new ConnectionRequestClientMessage() { SenderName = this.clientName };
 
             Send(request);
         }
@@ -142,13 +142,12 @@ namespace Client.Application
 
         private void Send(Message request)
         {
-            request.SenderName = this.clientName;
             networkManager.WriteData(request, serverEndPoint);
         }
 
         public void Disconnect()
         {
-            DisconnectMessage disconnectMessage = new DisconnectMessage()
+            DisconnectClientMessage disconnectMessage = new DisconnectClientMessage()
             {
             };
 
