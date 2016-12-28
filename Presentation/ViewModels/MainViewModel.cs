@@ -126,7 +126,14 @@ namespace Presentation.ViewModels
                     {
                         if (this.dataService != null)
                         {
-                            this.dataService.ServerRegister(new IPEndPoint(this.ServerAddress, this.ServerPort));
+                            try
+                            {
+                                this.dataService.ServerRegister(new IPEndPoint(this.ServerAddress, this.ServerPort));
+                            }
+                            catch (Exception)
+                            {
+                                MessageBox.Show("Couldn't connect. Wrong IP/Port?");
+                            }
                         }
                     };
 

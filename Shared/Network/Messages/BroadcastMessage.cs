@@ -18,7 +18,7 @@ namespace Shared.Data.Messages
 
         public override string ToString()
         {
-            return string.Format("Broadcast ({0})");
+            return string.Format("Broadcast ({0})", this.Text);
         }
     }
 }

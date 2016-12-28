@@ -57,7 +57,14 @@ namespace Shared.Data.Managers
         {
             if (this.clients.ContainsKey(target) && this.clients[target].Count > 0)
             {
+                try
+                {
                 this.clients[target].Last().GetStream().Write(bytes, 0, bytes.Length);
+                }
+                catch (Exception)
+                {
+                    return;
+                }
             }
         }
 

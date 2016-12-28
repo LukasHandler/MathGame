@@ -245,7 +245,7 @@ namespace Server.Application
         private void ServerConnectionRequestReceived(object sender, ConnectionRequestServerMessageEventArgs eventArgs)
         {
             ConnectionRequestServerMessage request = eventArgs.Message;
-            LogReceivedText(request, this.otherServer);
+            this.LogText("{0} received {1} from {2}", this.ToString(), request.ToString(), request.SenderName);
 
             //Decide if active or passive server.
             if (request.SenderStartTime == this.startTime)
@@ -259,10 +259,12 @@ namespace Server.Application
                 if (request.SenderStartTime > this.startTime)
                 {
                     this.isActive = true;
+                    this.LogText("{0} is active now", this.ToString());
                 }
                 else
                 {
                     this.isActive = false;
+                    this.LogText("{0} is passive now", this.ToString());
                 }
             }
 
@@ -295,9 +297,10 @@ namespace Server.Application
         private void ServerConnectionAcceptReceived(object sender, ConnectionAcceptedServerMessageEventArgs eventArgs)
         {
             ConnectionAcceptServerMessage serverReponseMessage = eventArgs.Message;
-            LogReceivedText(serverReponseMessage, this.otherServer);
+            this.LogText("{0} received {1} from {2}", this.ToString(), serverReponseMessage.ToString(), serverReponseMessage.SenderName);
 
             this.isActive = serverReponseMessage.IsTargetActive;
+            this.LogText("{0} is {1} now", this.ToString(), isActive ? "active" : "passive");
 
             if (this.otherServer == null)
             {

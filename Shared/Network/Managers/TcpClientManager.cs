@@ -34,14 +34,7 @@ namespace Shared.Data.Managers
             if (stream == null)
             {
                 client = new TcpClient();
-                try
-                {
-                    client.Connect(target);
-                }
-                catch (Exception)
-                {
-                    return;
-                }
+                client.Connect(target);
 
                 stream = client.GetStream();
                 this.StartReading(stream, target);

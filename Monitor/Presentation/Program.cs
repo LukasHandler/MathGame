@@ -15,11 +15,20 @@ namespace Monitor.Presentation
         static void Main(string[] args)
         {
             var serverEndPoint = ConsoleInput.GetIPEndPoint("Server");
-            DataService.Register(serverEndPoint);
-            DataService.OnLoggingDataReceived += PrintLogging;
 
-            Console.ReadLine();
-            DataService.Unregister();
+            try
+            {
+                DataService.Register(serverEndPoint);
+                DataService.OnLoggingDataReceived += PrintLogging;
+
+                Console.ReadLine();
+                DataService.Unregister();
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("Couldn't create connection, please restart and try again");
+                Console.ReadLine();
+            }
         }
 
         private static void PrintLogging(object sender, LoggingEventArgs e)
