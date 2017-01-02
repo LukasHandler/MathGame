@@ -1,72 +1,107 @@
-﻿using Shared.Data;
-using Shared.Data.EventArguments;
-using Shared.Data.Managers;
-using Shared.Data.Messages;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Text;
-using System.Threading.Tasks;
-
+﻿//-----------------------------------------------------------------------
+// <copyright file="DataService.cs" company="Lukas Handler">
+//     Lukas Handler
+// </copyright>
+// <summary>
+// This file contains the logic for the monitor.
+// </summary>
+//-----------------------------------------------------------------------
 namespace Monitor.Application
 {
-    public static class DataService
+    using System;
+    using EventArguments;
+    using Shared.Data;
+    using Shared.Data.EventArguments;
+    using Shared.Data.Managers;
+    using Shared.Data.Messages;
+
+    /// <summary>
+    /// This class contains the logic for the monitor.
+    /// </summary>
+    public class DataService
     {
-        private static MessageProcessor messageProcessor;
+        /// <summary>
+        /// The client data manager, which is responsible for sending and receiving messages.
+        /// </summary>
+        private IDataManager clientDataManager;
 
-        private static IDataManager clientManager;
+        /// <summary>
+        /// The server target information.
+        /// </summary>
+        private object serverTargetInformation;
 
-        private static IPEndPoint serverEndPoint;
+        /// <summary>
+        /// Indicates if the monitor is connected.
+        /// </summary>
+        private bool isConnected = false;
 
-        public static EventHandler<LoggingEventArgs> OnLoggingDataReceived;
-
-        private static bool isConnected = false;
-
-
-        static DataService()
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DataService"/> class.
+        /// </summary>
+        public DataService()
         {
-            messageProcessor = new MessageProcessor();
-            messageProcessor.OnConnectionAccepted += ConnectionAccepted;
-            messageProcessor.OnLoggingMessage += ReceivedLoggingMessage;
-
-            clientManager = new TcpClientManager();
-            clientManager.OnDataReceived += messageProcessor.DataReceived;
+            var messageProcessor = new MessageProcessor();
+            messageProcessor.OnConnectionAccepted += this.ConnectionAccepted;
+            messageProcessor.OnLoggingMessage += this.ReceivedLoggingMessage;
+            this.clientDataManager = new TcpClientManager();
+            this.clientDataManager.OnDataReceived += messageProcessor.DataReceived;
         }
 
-        private static void ReceivedLoggingMessage(object sender, LoggingMessageEventArgs e)
-        {
-            if (OnLoggingDataReceived != null)
-            {
-                string loggingMessage = e.Message.Text;
-                OnLoggingDataReceived(sender, new LoggingEventArgs(loggingMessage));
-            }
-        }
+        /// <summary>
+        /// Gets or sets the on logging data received event.
+        /// </summary>
+        /// <value>
+        /// The on logging data received event.
+        /// </value>
+        public EventHandler<LoggingEventArgs> OnLoggingDataReceived { get; set; }
 
-        private static void ConnectionAccepted(object sender, EventArgs e)
+        /// <summary>
+        /// Registers to the specified server target.
+        /// </summary>
+        /// <param name="serverTargetInformation">The server target information.</param>
+        public void Register(object serverTargetInformation)
         {
-            isConnected = true;
-        }
-
-        public static void Register(IPEndPoint serverPoint)
-        {
-            serverEndPoint = serverPoint;
-
-            clientManager.Register(serverEndPoint);
+            this.serverTargetInformation = serverTargetInformation;
+            this.clientDataManager.Register(this.serverTargetInformation);
             ConnectionRequestMonitorMessage requestMessage = new ConnectionRequestMonitorMessage();
-
-            clientManager.WriteData(requestMessage, serverEndPoint);
+            this.clientDataManager.WriteData(requestMessage, this.serverTargetInformation);
         }
 
-        public static void Unregister()
+        /// <summary>
+        /// Unregisters from the server.
+        /// </summary>
+        public void Unregister()
         {
-            if (isConnected)
+            if (this.isConnected)
             {
                 DisconnectClientMessage disconnectMessage = new DisconnectClientMessage();
-
-                clientManager.WriteData(disconnectMessage, serverEndPoint);
-                clientManager.Unregister(serverEndPoint);
+                this.clientDataManager.WriteData(disconnectMessage, this.serverTargetInformation);
+                this.clientDataManager.Unregister(this.serverTargetInformation);
             }
+        }
+
+        /// <summary>
+        /// Gets executed when a logging message was received.
+        /// </summary>
+        /// <param name="sender">The sender target information.</param>
+        /// <param name="eventArgs">The <see cref="LoggingMessageEventArgs"/> instance containing the event data.</param>
+        private void ReceivedLoggingMessage(object sender, LoggingMessageEventArgs eventArgs)
+        {
+            if (this.OnLoggingDataReceived != null)
+            {
+                string loggingMessage = eventArgs.Message.Text;
+                this.OnLoggingDataReceived(sender, new LoggingEventArgs(loggingMessage));
+            }
+        }
+
+        /// <summary>
+        /// Gets executed when the connection was accepted.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="eventArgs">The <see cref="EventArgs"/> instance containing the event data.</param>
+        private void ConnectionAccepted(object sender, EventArgs eventArgs)
+        {
+            this.isConnected = true;
         }
     }
 }

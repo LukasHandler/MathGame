@@ -1,177 +1,240 @@
-﻿using Client.Application;
-using Client.Application.EventArguments;
-using Shared.Data;
-using Shared.Data.EventArguments;
-using Shared.SharedPresentation.Utilities;
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Linq;
-using System.Net;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Data;
-using System.Windows.Threading;
-
+﻿//-----------------------------------------------------------------------
+// <copyright file="MainViewModel.cs" company="Lukas Handler">
+//     Lukas Handler
+// </copyright>
+// <summary>
+// This file represents the view model for the main window.
+// </summary>
+//-----------------------------------------------------------------------
 namespace Client.Presentation.ViewModels
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Collections.ObjectModel;
+    using System.ComponentModel;
+    using System.Net;
+    using System.Runtime.CompilerServices;
+    using System.Threading;
+    using System.Windows;
+    using System.Windows.Data;
+    using Client.Application;
+    using Client.Application.EventArguments;
+    using Shared.Data;
+    using Shared.SharedPresentation.Utilities;
+
+    /// <summary>
+    /// This class represents the view model for the main window.
+    /// </summary>
+    /// <seealso cref="System.ComponentModel.INotifyPropertyChanged" />
     public class MainViewModel : INotifyPropertyChanged
     {
-        private Thread timerThread;
-
-        private DataService networkService;
-
+        /// <summary>
+        /// The questions lock, needed for updating the collection synchronized.
+        /// </summary>
         private readonly object questionsLock = new object();
 
+        /// <summary>
+        /// The timer thread.
+        /// </summary>
+        private Thread timerThread;
+
+        /// <summary>
+        /// The data service from the application layer.
+        /// </summary>
+        private DataService dataService;
+
+        /// <summary>
+        /// The disconnect command.
+        /// </summary>
+        private RelayCommand disconnect;
+
+        /// <summary>
+        /// The connect command.
+        /// </summary>
+        private RelayCommand connect;
+
+        /// <summary>
+        /// The submit answer command.
+        /// </summary>
+        private RelayCommand submitAnswer;
+
+        /// <summary>
+        /// The get scores command.
+        /// </summary>
+        private RelayCommand getScores;
+
+        /// <summary>
+        /// The history contains previous messages.
+        /// </summary>
+        private ObservableCollection<string> history;
+
+        /// <summary>
+        /// The remaining time for answering the question.
+        /// </summary>
+        private int remainingTime;
+
+        /// <summary>
+        /// The current score.
+        /// </summary>
+        private int score;
+
+        /// <summary>
+        /// Indicates if the game is over.
+        /// </summary>
+        private bool isOver;
+
+        /// <summary>
+        /// The current question.
+        /// </summary>
+        private string question;
+
+        /// <summary>
+        /// Indicates if the client is connected.
+        /// </summary>
+        private bool isConnected;
+
+        /// <summary>
+        /// The scores.
+        /// </summary>
+        private List<ScoreEntry> scores;
+
+        /// <summary>
+        /// The server name.
+        /// </summary>
+        private string serverName;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MainViewModel"/> class.
+        /// </summary>
         public MainViewModel()
         {
             this.PlayerName = "horst";
             this.ServerAddress = IPAddress.Parse("127.0.0.1");
             this.ServerPort = 4701;
             this.ServerName = "server1";
-            this.Questions = new ObservableCollection<string>();
+            this.History = new ObservableCollection<string>();
             this.Scores = new List<ScoreEntry>();
 
-            networkService = new DataService();
-
-            networkService.OnConnectionAccepted += delegate (object sender, EventArgs args)
+            this.dataService = new DataService();
+            this.dataService.OnConnectionAccepted += delegate(object sender, EventArgs args)
             {
                 this.IsConnected = true;
             };
-
-            networkService.OnConnectionDenied += delegate (object sender, EventArgs args)
+            this.dataService.OnConnectionDenied += delegate(object sender, EventArgs args)
             {
                 MessageBox.Show("Server denied the connection.");
                 this.IsConnected = false;
             };
-
-            networkService.OnQuestionReceived += delegate (object sender, QuestionEventArgs args)
+            this.dataService.OnQuestionReceived += delegate(object sender, QuestionEventArgs args)
             {
-                this.Questions.Add(args.QuestionText);
+                this.History.Add(args.QuestionText);
                 this.Question = args.QuestionText;
-                this.Time = args.Time;
+                this.RemainingTime = args.Time;
                 this.Score = args.Score;
 
-                ThreadStart timerThreadStart = new ThreadStart(this.updateQuestionTimer);
+                ThreadStart timerThreadStart = new ThreadStart(this.UpdateQuestionTimer);
 
                 if (this.timerThread != null)
                 {
                     this.timerThread.Abort();
                 }
 
-                timerThread = new Thread(timerThreadStart);
-                timerThread.Start();
+                this.timerThread = new Thread(timerThreadStart);
+                this.timerThread.Start();
             };
-
-            networkService.OnGameWon += delegate (object sender, GameFinishedEventArgs args)
+            this.dataService.OnGameWon += delegate(object sender, GameFinishedEventArgs args)
             {
                 this.Score = args.Score;
                 this.timerThread.Abort();
-                this.Time = 0;
+                this.RemainingTime = 0;
                 MessageBox.Show("Congratulations, you won!");
                 this.IsOver = true;
             };
-
-            networkService.OnGameLost += delegate (object sender, GameFinishedEventArgs args)
+            this.dataService.OnGameLost += delegate(object sender, GameFinishedEventArgs args)
             {
                 this.Score = args.Score;
                 this.timerThread.Abort();
-                this.Time = 0;
+                this.RemainingTime = 0;
                 MessageBox.Show("You lost!");
                 this.IsOver = true;
             };
-
-            networkService.OnScoresReceived += delegate (object sender, ScoresEventArgs args)
+            this.dataService.OnScoresReceived += delegate(object sender, ScoresEventArgs args)
             {
                 this.Scores = args.Scores;
             };
-
-            networkService.OnBroadcastTextReceived += delegate (object sender, BroadcastEventArgs args)
+            this.dataService.OnBroadcastTextReceived += delegate(object sender, BroadcastEventArgs args)
             {
-                this.Questions.Add(args.BroadcastText);
+                this.History.Add(args.BroadcastText);
             };
         }
 
-        private void updateQuestionTimer()
-        {
-            while (this.Time != 0)
-            {
-                Thread.Sleep(1000);
-                this.Time--;
-            }
-        }
-
+        /// <summary>
+        /// Occurs when property changed to notify UI.
+        /// </summary>
         public event PropertyChangedEventHandler PropertyChanged;
 
-        private RelayCommand disconnect;
-
-        private RelayCommand connect;
-
-        private RelayCommand submitAnswer;
-
-        private RelayCommand getScores;
-
-        private ObservableCollection<string> questions;
-
-        private int time;
-
-        private int score;
-
-        private bool isOver;
-
-        public ObservableCollection<string> Questions
+        /// <summary>
+        /// Gets or sets the history (for previous messages).
+        /// </summary>
+        /// <value>
+        /// The history.
+        /// </value>
+        public ObservableCollection<string> History
         {
             get
             {
-                return this.questions;
+                return this.history;
             }
+
             set
             {
-                if (this.questions != value)
+                if (this.history != value)
                 {
-                    this.questions = value;
+                    this.history = value;
                     this.OnPropertyChanged();
 
-                    //Avoid problem when updating the observable collection from a different thread (http://stackoverflow.com/questions/2104614/updating-an-observablecollection-in-a-separate-thread)
-                    BindingOperations.EnableCollectionSynchronization(this.questions, questionsLock);
+                    // Avoid problem when updating the observable collection from a different thread <see href="http://stackoverflow.com/questions/2104614/updating-an-observablecollection-in-a-separate-thread"/>
+                    BindingOperations.EnableCollectionSynchronization(this.history, this.questionsLock);
                 }
             }
         }
 
-        public int Time
+        /// <summary>
+        /// Gets or sets the remaining time.
+        /// </summary>
+        /// <value>
+        /// The remaining time.
+        /// </value>
+        public int RemainingTime
         {
             get
             {
-                return this.time;
+                return this.remainingTime;
             }
+
             set
             {
-                if (this.time != value)
+                if (this.remainingTime != value)
                 {
-                    this.time = value;
+                    this.remainingTime = value;
                     this.OnPropertyChanged();
                 }
             }
         }
 
-        private string question;
-
-        private bool isConnected;
-
-        private List<ScoreEntry> scores;
-
-        private string serverName;
-
+        /// <summary>
+        /// Gets or sets the scores.
+        /// </summary>
+        /// <value>
+        /// The scores.
+        /// </value>
         public List<ScoreEntry> Scores
         {
             get
             {
                 return this.scores;
             }
+
             set
             {
                 if (this.scores != value)
@@ -182,12 +245,19 @@ namespace Client.Presentation.ViewModels
             }
         }
 
+        /// <summary>
+        /// Gets or sets a value indicating whether the game is over.
+        /// </summary>
+        /// <value>
+        ///   <c>true</c> if game is over; otherwise, <c>false</c>.
+        /// </value>
         public bool IsOver
         {
             get
             {
                 return this.isOver;
             }
+
             set
             {
                 if (this.isOver != value)
@@ -198,14 +268,27 @@ namespace Client.Presentation.ViewModels
             }
         }
 
+        /// <summary>
+        /// Gets or sets the name of the player.
+        /// </summary>
+        /// <value>
+        /// The name of the player.
+        /// </value>
         public string PlayerName { get; set; }
 
+        /// <summary>
+        /// Gets the question.
+        /// </summary>
+        /// <value>
+        /// The question.
+        /// </value>
         public string Question
         {
             get
             {
                 return this.question;
             }
+
             private set
             {
                 if (this.question != value)
@@ -216,16 +299,35 @@ namespace Client.Presentation.ViewModels
             }
         }
 
+        /// <summary>
+        /// Gets or sets the server address. For UDP.
+        /// </summary>
+        /// <value>
+        /// The server address.
+        /// </value>
         public IPAddress ServerAddress { get; set; }
 
+        /// <summary>
+        /// Gets or sets the server port. For UDP.
+        /// </summary>
+        /// <value>
+        /// The server port.
+        /// </value>
         public int ServerPort { get; set; }
 
+        /// <summary>
+        /// Gets or sets the name of the server. For named pipes.
+        /// </summary>
+        /// <value>
+        /// The name of the server.
+        /// </value>
         public string ServerName
         {
             get
             {
                 return this.serverName;
             }
+
             set
             {
                 if (this.serverName != value)
@@ -236,16 +338,35 @@ namespace Client.Presentation.ViewModels
             }
         }
 
+        /// <summary>
+        /// Gets or sets a value indicating whether this instance should use named pipes connection.
+        /// </summary>
+        /// <value>
+        /// <c>true</c> if this instance should use named pipes; otherwise, <c>false</c>.
+        /// </value>
         public bool IsNamedPipes { get; set; }
 
+        /// <summary>
+        /// Gets or sets the answer.
+        /// </summary>
+        /// <value>
+        /// The answer.
+        /// </value>
         public int Answer { get; set; }
 
+        /// <summary>
+        /// Gets or sets the score.
+        /// </summary>
+        /// <value>
+        /// The score.
+        /// </value>
         public int Score
         {
             get
             {
                 return this.score;
             }
+
             set
             {
                 if (this.score != value)
@@ -256,12 +377,19 @@ namespace Client.Presentation.ViewModels
             }
         }
 
+        /// <summary>
+        /// Gets or sets a value indicating whether this instance is connected.
+        /// </summary>
+        /// <value>
+        /// <c>true</c> if this instance is connected; otherwise, <c>false</c>.
+        /// </value>
         public bool IsConnected
         {
             get
             {
                 return this.isConnected;
             }
+
             set
             {
                 if (this.isConnected != value)
@@ -272,27 +400,29 @@ namespace Client.Presentation.ViewModels
             }
         }
 
+        /// <summary>
+        /// Gets the connect command.
+        /// </summary>
+        /// <value>
+        /// The connect command.
+        /// </value>
         public RelayCommand Connect
         {
             get
             {
                 if (this.connect == null)
                 {
-                    Action<object> execute = delegate (object argument)
+                    Action<object> execute = delegate(object argument)
                     {
                         try
                         {
-                            //if (!isConnecting)
+                            if (this.IsNamedPipes)
                             {
-                                //isConnecting = true;
-                                if (this.IsNamedPipes)
-                                {
-                                    networkService.Connect(this.serverName, this.PlayerName, this.IsNamedPipes);
-                                }
-                                else
-                                {
-                                    networkService.Connect(new IPEndPoint(this.ServerAddress, this.ServerPort), this.PlayerName, this.IsNamedPipes);
-                                }
+                                this.dataService.Connect(this.serverName, this.PlayerName, this.IsNamedPipes);
+                            }
+                            else
+                            {
+                                this.dataService.Connect(new IPEndPoint(this.ServerAddress, this.ServerPort), this.PlayerName, this.IsNamedPipes);
                             }
                         }
                         catch (Exception exc)
@@ -301,7 +431,7 @@ namespace Client.Presentation.ViewModels
                         }
                     };
 
-                    Predicate<object> canExecute = delegate (object argument)
+                    Predicate<object> canExecute = delegate(object argument)
                     {
                         if (this.IsConnected
                         || this.ServerAddress == default(IPAddress)
@@ -324,17 +454,23 @@ namespace Client.Presentation.ViewModels
             }
         }
 
+        /// <summary>
+        /// Gets the disconnect command.
+        /// </summary>
+        /// <value>
+        /// The disconnect command.
+        /// </value>
         public RelayCommand Disconnect
         {
             get
             {
                 if (this.disconnect == null)
                 {
-                    Action<object> execute = delegate (object argument)
+                    Action<object> execute = delegate(object argument)
                     {
                         try
                         {
-                            networkService.Disconnect();
+                            this.dataService.Disconnect();
                             this.IsConnected = false;
                             this.IsOver = false;
                             if (this.timerThread != null && this.timerThread.IsAlive)
@@ -342,8 +478,8 @@ namespace Client.Presentation.ViewModels
                                 this.timerThread.Abort();
                             }
 
-                            this.Time = 0;
-                            this.Questions = new ObservableCollection<string>();
+                            this.RemainingTime = 0;
+                            this.History = new ObservableCollection<string>();
                             this.Scores = new List<ScoreEntry>();
                             this.Answer = 0;
                             this.Question = string.Empty;
@@ -355,7 +491,7 @@ namespace Client.Presentation.ViewModels
                         }
                     };
 
-                    Predicate<object> canExecute = delegate (object argument)
+                    Predicate<object> canExecute = delegate(object argument)
                     {
                         return this.IsConnected;
                     };
@@ -367,18 +503,24 @@ namespace Client.Presentation.ViewModels
             }
         }
 
+        /// <summary>
+        /// Gets the submit command.
+        /// </summary>
+        /// <value>
+        /// The submit command.
+        /// </value>
         public RelayCommand Submit
         {
             get
             {
                 if (this.submitAnswer == null)
                 {
-                    Action<object> execute = delegate (object argument)
+                    Action<object> execute = delegate(object argument)
                     {
-                        networkService.SubmitAnswer(this.Answer);
+                        this.dataService.SubmitAnswer(this.Answer);
                     };
 
-                    Predicate<object> canExecute = delegate (object argument)
+                    Predicate<object> canExecute = delegate(object argument)
                     {
                         return !this.IsOver;
                     };
@@ -390,15 +532,21 @@ namespace Client.Presentation.ViewModels
             }
         }
 
+        /// <summary>
+        /// Gets the get scores command.
+        /// </summary>
+        /// <value>
+        /// The get scores command.
+        /// </value>
         public RelayCommand GetScores
         {
             get
             {
                 if (this.getScores == null)
                 {
-                    Action<object> execute = delegate (object argument)
+                    Action<object> execute = delegate(object argument)
                     {
-                        networkService.GetScores();
+                        this.dataService.GetScores();
                     };
 
                     this.getScores = new RelayCommand(execute);
@@ -408,12 +556,27 @@ namespace Client.Presentation.ViewModels
             }
         }
 
-        //http://www.pmbs.de/inotifypropertychanged-robust-und-ohne-strings-callermembername-mvvm/
+        /// <summary>
+        /// Simple form, found from  <see href="http://www.pmbs.de/inotifypropertychanged-robust-und-ohne-strings-callermembername-mvvm/"/>
+        /// </summary>
+        /// <param name="propertyName">Name of the property.</param>
         protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
             if (this.PropertyChanged != null)
             {
                 this.PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
+            }
+        }
+
+        /// <summary>
+        /// Updates the question timer.
+        /// </summary>
+        private void UpdateQuestionTimer()
+        {
+            while (this.RemainingTime != 0)
+            {
+                Thread.Sleep(1000);
+                this.RemainingTime--;
             }
         }
     }

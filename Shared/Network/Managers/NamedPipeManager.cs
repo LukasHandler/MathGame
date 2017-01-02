@@ -1,98 +1,91 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Shared.Data.EventArguments;
-using Shared.Data.Messages;
-using System.IO.Pipes;
-using System.IO;
-
+﻿//-----------------------------------------------------------------------
+// <copyright file="NamedPipeManager.cs" company="Lukas Handler">
+//     Lukas Handler
+// </copyright>
+// <summary>
+// This file represents the named pipe manager. Each client also starts a named pipe server to receive messages.
+// </summary>
+//-----------------------------------------------------------------------
 namespace Shared.Data.Managers
 {
+    using System;
+    using System.Collections.Generic;
+    using System.IO;
+    using System.IO.Pipes;
+    using System.Linq;
+    using EventArguments;
+    using Messages;
+
+    /// <summary>
+    /// This class represents the named pipe manager.
+    /// </summary>
+    /// <seealso cref="Shared.Data.IDataManager" />
     public class NamedPipeManager : IDataManager
     {
+        /// <summary>
+        /// The server name for receiving messages. The server uses his real name, clients use a guid.
+        /// </summary>
         private string serverName;
 
+        /// <summary>
+        /// The locker to synchronize send operations.
+        /// </summary>
         private object locker;
 
+        /// <summary>
+        /// The clients of the named pipes (necessary for the server).
+        /// </summary>
         private Dictionary<string, NamedPipeClientStream> clients;
 
-        public event EventHandler<MessageEventArgs> OnDataReceived;
-
-
+        /// <summary>
+        /// Initializes a new instance of the <see cref="NamedPipeManager"/> class.
+        /// </summary>
+        /// <param name="serverPipeName">Name of the server pipe.</param>
         public NamedPipeManager(string serverPipeName)
         {
             this.locker = new object();
             this.serverName = serverPipeName;
             this.clients = new Dictionary<string, NamedPipeClientStream>();
             var server = new NamedPipeServerStream(serverPipeName, PipeDirection.In, 254, PipeTransmissionMode.Message, PipeOptions.Asynchronous);
-            server.BeginWaitForConnection(connectionFound, server);
+            server.BeginWaitForConnection(this.ConnectionFound, server);
         }
 
-        public NamedPipeManager() : this(Guid.NewGuid().ToString()) { }
-
-        private void connectionFound(IAsyncResult ar)
+        /// <summary>
+        /// Initializes a new instance of the <see cref="NamedPipeManager"/> class.
+        /// </summary>
+        public NamedPipeManager() : this(Guid.NewGuid().ToString())
         {
-            NamedPipeServerStream server = (NamedPipeServerStream)ar.AsyncState;
-            server.EndWaitForConnection(ar);
-
-            var server2 = new NamedPipeServerStream(serverName, PipeDirection.In, 254, PipeTransmissionMode.Message, PipeOptions.Asynchronous);
-            server2.BeginWaitForConnection(connectionFound, server2);
-
-            byte[] myBuffer = new byte[1000];
-            Tuple<NamedPipeServerStream, byte[]> tuple = new Tuple<NamedPipeServerStream, byte[]>(server, myBuffer);
-
-            byte[] payloadSize = new byte[4];
-            byte[] payload = null;
-            AsyncCallback readSizeCallback = null;
-
-            AsyncCallback readPayloadCallback = delegate (IAsyncResult asyncResultPayload)
-            {
-                int bytesRead = server.EndRead(asyncResultPayload);
-                byte[] copyPayload = new byte[bytesRead];
-                Array.Copy(payload, copyPayload, bytesRead);
-                server.BeginRead(payloadSize, 0, payloadSize.Length, readSizeCallback, null);
-
-                byte[] senderPipeNameSizeBytes = copyPayload.Take(4).ToArray();
-                int senderPipeNameSize = BitConverter.ToInt32(senderPipeNameSizeBytes, 0);
-
-                byte[] senderPipeNameBytes = copyPayload.Skip(4).Take(senderPipeNameSize).ToArray();
-                string sender = System.Text.ASCIIEncoding.ASCII.GetString(senderPipeNameBytes);
-
-                int messageStartIndex = 4 + senderPipeNameBytes.Count();
-                byte[] message = copyPayload.Skip(messageStartIndex).Take(copyPayload.Count()).ToArray();
-
-                Message receivedMessage = MessageByteConverter.ConvertToMessage(message);
-                OnDataReceived?.Invoke(sender, new MessageEventArgs(receivedMessage));
-            };
-
-            readSizeCallback = delegate (IAsyncResult asynResultSize)
-            {
-                server.EndRead(asynResultSize);
-                payload = new byte[BitConverter.ToInt32(payloadSize, 0)];
-                server.BeginRead(payload, 0, payload.Length, readPayloadCallback, null);
-            };
-
-            server.BeginRead(payloadSize, 0, payloadSize.Length, readSizeCallback, null);
         }
 
+        /// <summary>
+        /// Occurs when data was received.
+        /// </summary>
+        public event EventHandler<MessageEventArgs> OnDataReceived;
+
+        /// <summary>
+        /// Registers to the specified target.
+        /// </summary>
+        /// <param name="target">The target.</param>
         public void Register(object target)
         {
             var targetPipe = (string)target;
 
-            lock (locker)
+            lock (this.locker)
             {
                 if (!this.clients.ContainsKey(targetPipe))
                 {
                     var newClient = new NamedPipeClientStream(".", targetPipe, PipeDirection.Out, PipeOptions.Asynchronous);
-                    clients.Add(targetPipe, newClient);
+                    this.clients.Add(targetPipe, newClient);
                     newClient.Connect();
                     newClient.ReadMode = PipeTransmissionMode.Message;
                 }
             }
         }
 
+        /// <summary>
+        /// Unregisters from the specified target.
+        /// </summary>
+        /// <param name="target">The target.</param>
         public void Unregister(object target)
         {
             var targetPipe = (string)target;
@@ -105,6 +98,11 @@ namespace Shared.Data.Managers
             }
         }
 
+        /// <summary>
+        /// Writes the data.
+        /// </summary>
+        /// <param name="data">The data.</param>
+        /// <param name="target">The target.</param>
         public void WriteData(Message data, object target)
         {
             var targetPipe = (string)target;
@@ -135,11 +133,60 @@ namespace Shared.Data.Managers
 
                 var client = this.clients[targetPipe];
 
-                lock (locker)
+                lock (this.locker)
                 {
                     client.Write(payload, 0, payload.Count());
                 }
             }
+        }
+
+        /// <summary>
+        /// Happens when a connection was found. Create a new named pipe server stream with the same name to receive more clients.
+        /// </summary>
+        /// <param name="asyncResult">The async result.</param>
+        private void ConnectionFound(IAsyncResult asyncResult)
+        {
+            NamedPipeServerStream server = (NamedPipeServerStream)asyncResult.AsyncState;
+            server.EndWaitForConnection(asyncResult);
+
+            // Create new server stream.
+            var server2 = new NamedPipeServerStream(this.serverName, PipeDirection.In, 254, PipeTransmissionMode.Message, PipeOptions.Asynchronous);
+            server2.BeginWaitForConnection(this.ConnectionFound, server2);
+            byte[] myBuffer = new byte[1000];
+            byte[] payloadSize = new byte[4];
+            byte[] payload = null;
+            AsyncCallback readSizeCallback = null;
+
+            // Read the full payload, happens after reading the payload size.
+            AsyncCallback readPayloadCallback = delegate(IAsyncResult asyncResultPayload)
+            {
+                int bytesRead = server.EndRead(asyncResultPayload);
+                byte[] copyPayload = new byte[bytesRead];
+                Array.Copy(payload, copyPayload, bytesRead);
+                server.BeginRead(payloadSize, 0, payloadSize.Length, readSizeCallback, null);
+
+                byte[] senderPipeNameSizeBytes = copyPayload.Take(4).ToArray();
+                int senderPipeNameSize = BitConverter.ToInt32(senderPipeNameSizeBytes, 0);
+
+                byte[] senderPipeNameBytes = copyPayload.Skip(4).Take(senderPipeNameSize).ToArray();
+                string sender = System.Text.ASCIIEncoding.ASCII.GetString(senderPipeNameBytes);
+
+                int messageStartIndex = 4 + senderPipeNameBytes.Count();
+                byte[] message = copyPayload.Skip(messageStartIndex).Take(copyPayload.Count()).ToArray();
+
+                Message receivedMessage = MessageByteConverter.ConvertToMessage(message);
+                this.OnDataReceived?.Invoke(sender, new MessageEventArgs(receivedMessage));
+            };
+
+            // Read the payload size.
+            readSizeCallback = delegate(IAsyncResult asynResultSize)
+            {
+                server.EndRead(asynResultSize);
+                payload = new byte[BitConverter.ToInt32(payloadSize, 0)];
+                server.BeginRead(payload, 0, payload.Length, readPayloadCallback, null);
+            };
+
+            server.BeginRead(payloadSize, 0, payloadSize.Length, readSizeCallback, null);
         }
     }
 }

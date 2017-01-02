@@ -45,7 +45,9 @@
     <Compile Include="EventArguments\GameFinishedEventArgs.cs" />
     <Compile Include="EventArguments\QuestionEventArgs.cs" />
     <Compile Include="EventArguments\ScoresEventArgs.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs">
+      <ExcludeFromStyleCop>True</ExcludeFromStyleCop>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Shared\Network\SharedData.csproj">

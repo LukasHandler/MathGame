@@ -1,28 +1,39 @@
-﻿using Monitor.Application;
-using Shared.Data;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Net;
-using System.Text;
-using System.Threading.Tasks;
-
+﻿//-----------------------------------------------------------------------
+// <copyright file="Program.cs" company="Lukas Handler">
+//     Lukas Handler
+// </copyright>
+// <summary>
+// This file represents the UI for the monitor.
+// </summary>
+//-----------------------------------------------------------------------
 namespace Monitor.Presentation
 {
-    class Program
+    using System;
+    using System.Net;
+    using Application;
+    using Application.EventArguments;
+
+    /// <summary>
+    /// This class represents the UI for the monitor.
+    /// </summary>
+    public class Program
     {
-        static void Main(string[] args)
+        /// <summary>
+        /// Entry point when the program gets launched.
+        /// </summary>
+        /// <param name="args">The command line arguments.</param>
+        private static void Main(string[] args)
         {
-            var serverEndPoint = ConsoleInput.GetIPEndPoint("Server");
+            var serverEndPoint = GetIPEndPoint();
+            DataService dataService = new DataService();
 
             try
             {
-                DataService.Register(serverEndPoint);
-                DataService.OnLoggingDataReceived += PrintLogging;
+                dataService.Register(serverEndPoint);
+                dataService.OnLoggingDataReceived += PrintLogging;
 
                 Console.ReadLine();
-                DataService.Unregister();
+                dataService.Unregister();
             }
             catch (Exception)
             {
@@ -31,9 +42,42 @@ namespace Monitor.Presentation
             }
         }
 
-        private static void PrintLogging(object sender, LoggingEventArgs e)
+        /// <summary>
+        /// Gets the IP end point.
+        /// </summary>
+        /// <returns>The IP end point.</returns>
+        private static IPEndPoint GetIPEndPoint()
         {
-            Console.WriteLine(e.LoggingText);
+            IPAddress address = null;
+            string input = string.Empty;
+
+            do
+            {
+                Console.Write("Server-IP: ");
+                input = Console.ReadLine();
+            }
+            while (!IPAddress.TryParse(input, out address));
+
+            int port = 0;
+
+            do
+            {
+                Console.Write("Server-Port: ");
+                input = Console.ReadLine();
+            }
+            while (!int.TryParse(input, out port));
+
+            return new IPEndPoint(address, port);
+        }
+
+        /// <summary>
+        /// Prints a logged message.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="eventArgs">The <see cref="LoggingEventArgs"/> instance containing the event data.</param>
+        private static void PrintLogging(object sender, LoggingEventArgs eventArgs)
+        {
+            Console.WriteLine(eventArgs.LoggingText);
         }
     }
 }

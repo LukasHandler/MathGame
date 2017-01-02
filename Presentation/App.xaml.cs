@@ -1,15 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Data;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Windows;
-
+﻿//-----------------------------------------------------------------------
+// <copyright file="App.xaml.cs" company="Lukas Handler">
+//     Lukas Handler
+// </copyright>
+// <summary>
+// Auto generated file.
+// </summary>
+//-----------------------------------------------------------------------
 namespace Presentation
 {
+    using System.Windows;
+
     /// <summary>
-    /// Interaktionslogik für "App.xaml"
+    /// Interaction logic for Application.
     /// </summary>
     public partial class App : Application
     {

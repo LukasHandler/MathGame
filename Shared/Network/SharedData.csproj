@@ -44,7 +44,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ConsoleInput.cs" />
     <Compile Include="EventArguments\AnswerMessageEventArgs.cs" />
     <Compile Include="EventArguments\BroadcastMessageEventArgs.cs" />
     <Compile Include="EventArguments\BroadcastRequestMessageEventArgs.cs" />
@@ -64,7 +63,6 @@
     <Compile Include="EventArguments\ServerScoreResponseMessageEventArgs.cs" />
     <Compile Include="IDataManager.cs" />
     <Compile Include="IMessageVisitor.cs" />
-    <Compile Include="LoggingEventArgs.cs" />
     <Compile Include="Managers\NamedPipeManager.cs" />
     <Compile Include="Managers\TcpClientManager.cs" />
     <Compile Include="Managers\TcpManager.cs" />
@@ -79,7 +77,9 @@
     <Compile Include="Messages\BroadcastMessage.cs" />
     <Compile Include="Messages\ConnectionAcceptServerMessage.cs" />
     <Compile Include="Messages\ConnectionRequestMonitorMessage.cs" />
-    <Compile Include="Messages\ConnectionRequestServerMessage.cs" />
+    <Compile Include="Messages\ConnectionRequestServerMessage.cs">
+      <ExcludeFromStyleCop>False</ExcludeFromStyleCop>
+    </Compile>
     <Compile Include="Messages\DisconnectClientMessage.cs" />
     <Compile Include="Messages\DisconnectMonitorMessage.cs" />
     <Compile Include="Messages\DisconnectServerMessage.cs" />

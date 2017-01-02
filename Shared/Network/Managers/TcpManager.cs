@@ -1,34 +1,55 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Shared.Data.EventArguments;
-using Shared.Data.Messages;
-using System.Net.Sockets;
-using System.Net;
-using System.IO;
-
+﻿//-----------------------------------------------------------------------
+// <copyright file="TcpManager.cs" company="Lukas Handler">
+//     Lukas Handler
+// </copyright>
+// <summary>
+// This file represents the TCP manager. TCP client and server inherit from this.
+// </summary>
+//-----------------------------------------------------------------------
 namespace Shared.Data.Managers
 {
+    using System;
+    using System.IO;
+    using System.Linq;
+    using System.Net;
+    using System.Net.Sockets;
+    using EventArguments;
+    using Messages;
+
+    /// <summary>
+    /// This class represents the TCP manager.
+    /// </summary>
+    /// <seealso cref="Shared.Data.IDataManager" />
     public abstract class TcpManager : IDataManager
     {
+        /// <summary>
+        /// Occurs when the manager received data.
+        /// </summary>
         public event EventHandler<MessageEventArgs> OnDataReceived;
 
+        /// <summary>
+        /// Registers to the specified target.
+        /// </summary>
+        /// <param name="target">The target.</param>
         public void Register(object target)
         {
             this.Connect((IPEndPoint)target);
         }
 
-        protected abstract void Disconnect(IPEndPoint target);
-
-        protected abstract void Connect(IPEndPoint target);
-
+        /// <summary>
+        /// Unregisters from the specified target.
+        /// </summary>
+        /// <param name="target">The target.</param>
         public void Unregister(object target)
         {
             this.Disconnect((IPEndPoint)target);
         }
 
+        /// <summary>
+        /// Writes the data.
+        /// </summary>
+        /// <param name="data">The data.</param>
+        /// <param name="target">The target.</param>
         public void WriteData(Message data, object target)
         {
             byte[] bytes = MessageByteConverter.ConvertToBytes(data);
@@ -45,15 +66,37 @@ namespace Shared.Data.Managers
             this.SendData(fullData, (IPEndPoint)target);
         }
 
+        /// <summary>
+        /// Sends the data.
+        /// </summary>
+        /// <param name="data">The data.</param>
+        /// <param name="target">The target.</param>
         protected abstract void SendData(byte[] data, IPEndPoint target);
 
+        /// <summary>
+        /// Disconnects the specified target.
+        /// </summary>
+        /// <param name="target">The target.</param>
+        protected abstract void Disconnect(IPEndPoint target);
+
+        /// <summary>
+        /// Connects the specified target.
+        /// </summary>
+        /// <param name="target">The target.</param>
+        protected abstract void Connect(IPEndPoint target);
+
+        /// <summary>
+        /// Starts the reading for receiving messages.
+        /// </summary>
+        /// <param name="stream">The stream.</param>
+        /// <param name="target">The target.</param>
         protected void StartReading(NetworkStream stream, IPEndPoint target)
         {
             byte[] byteSize = new byte[4];
             byte[] buffer = null;
             AsyncCallback callback = null;
 
-            AsyncCallback lengthCallback = delegate (IAsyncResult result)
+            AsyncCallback lengthCallback = delegate(IAsyncResult result)
             {
                 int bytesRead;
 
@@ -61,7 +104,6 @@ namespace Shared.Data.Managers
                 {
                     bytesRead = stream.EndRead(result);
                 }
-                //IOException, ObjectDisposedException
                 catch (Exception)
                 {
                     return;
@@ -72,7 +114,7 @@ namespace Shared.Data.Managers
                 stream.BeginRead(buffer, 0, buffer.Length, callback, null);
             };
 
-            callback = delegate (IAsyncResult result)
+            callback = delegate(IAsyncResult result)
             {
                 int bytesRead;
 
@@ -90,7 +132,7 @@ namespace Shared.Data.Managers
                     return;
                 }
 
-                //Copy result into new buffer so we can read as soon as possible again - otherwise some messages get lost
+                // Copy result into new buffer so we can read as soon as possible again - otherwise some messages get lost.
                 byte[] toConvertBuffer = new byte[bytesRead];
                 Array.Copy(buffer, toConvertBuffer, bytesRead);
 
@@ -99,20 +141,13 @@ namespace Shared.Data.Managers
 
                 Message receivedMessage = MessageByteConverter.ConvertToMessage(toConvertBuffer);
 
-                if (OnDataReceived != null)
+                if (this.OnDataReceived != null)
                 {
-                    OnDataReceived(target, new MessageEventArgs(receivedMessage));
+                    this.OnDataReceived(target, new MessageEventArgs(receivedMessage));
                 }
             };
 
             stream.BeginRead(byteSize, 0, byteSize.Length, lengthCallback, null);
-        }
-
-        private int GetPacketSize(NetworkStream stream)
-        {
-            byte[] bufferSize = new byte[4];
-            stream.Read(bufferSize, 0, 4);
-            return Convert.ToInt32(bufferSize);
         }
     }
 }

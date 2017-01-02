@@ -1,19 +1,37 @@
-﻿using Shared.Data.Messages;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
+﻿//-----------------------------------------------------------------------
+// <copyright file="ForwardingMessageEventArgs.cs" company="Lukas Handler">
+//     Lukas Handler
+// </copyright>
+// <summary>
+// This file represents the forwarding message event arguments.
+// </summary>
+//-----------------------------------------------------------------------
 namespace Shared.Data.EventArguments
 {
+    using System;
+    using Shared.Data.Messages;
+
+    /// <summary>
+    /// This class represents the forwarding message event arguments.
+    /// </summary>
+    /// <seealso cref="System.EventArgs" />
     public class ForwardingMessageEventArgs : EventArgs
     {
-        public ForwardingMessage Message { get; set; }
-
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ForwardingMessageEventArgs"/> class.
+        /// </summary>
+        /// <param name="message">The message.</param>
         public ForwardingMessageEventArgs(ForwardingMessage message)
         {
             this.Message = message;
         }
+
+        /// <summary>
+        /// Gets or sets the message.
+        /// </summary>
+        /// <value>
+        /// The message.
+        /// </value>
+        public ForwardingMessage Message { get; set; }
     }
 }

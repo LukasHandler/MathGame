@@ -1,43 +1,61 @@
-﻿using Shared.Data.EventArguments;
-using Shared.Data.Messages;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Net.Sockets;
-using System.Text;
-using System.Threading.Tasks;
-
+﻿//-----------------------------------------------------------------------
+// <copyright file="TcpClientManager.cs" company="Lukas Handler">
+//     Lukas Handler
+// </copyright>
+// <summary>
+// This file represents the TCP client manager.
+// </summary>
+//-----------------------------------------------------------------------
 namespace Shared.Data.Managers
 {
+    using System.Net;
+    using System.Net.Sockets;
+
+    /// <summary>
+    /// This class represents the TCP client manager.
+    /// </summary>
+    /// <seealso cref="Shared.Data.Managers.TcpManager" />
     public class TcpClientManager : TcpManager
     {
+        /// <summary>
+        /// The stream to the server.
+        /// </summary>
         private NetworkStream stream;
 
-        private TcpClient client;
-
+        /// <summary>
+        /// Sends the data.
+        /// </summary>
+        /// <param name="data">The data.</param>
+        /// <param name="target">The target.</param>
         protected override void SendData(byte[] data, IPEndPoint target)
         {
             if (this.stream != null)
             {
-                stream.Write(data, 0, data.Length);
+                this.stream.Write(data, 0, data.Length);
             }
         }
 
+        /// <summary>
+        /// Disconnects from the specified target.
+        /// </summary>
+        /// <param name="target">The target.</param>
         protected override void Disconnect(IPEndPoint target)
         {
-            stream.Dispose();
+            this.stream.Dispose();
         }
 
+        /// <summary>
+        /// Connects to the specified target.
+        /// </summary>
+        /// <param name="target">The target.</param>
         protected override void Connect(IPEndPoint target)
         {
-            if (stream == null)
+            if (this.stream == null)
             {
-                client = new TcpClient();
+                var client = new TcpClient();
                 client.Connect(target);
-
-                stream = client.GetStream();
-                this.StartReading(stream, target);
+                this.stream = client.GetStream();
+                this.StartReading(this.stream, target);
             }
         }
     }

@@ -328,7 +328,7 @@ namespace Server.Application
         {
             ForwardingMessage forwardingMessage = eventArgs.Message;
             this.LogReceivedText(forwardingMessage, this.otherServer);
-            this.LogSentText(forwardingMessage.InnerMessage, this.otherServer);
+            this.LogText("{0} sent {1} to {2}", this.ToString(), forwardingMessage.InnerMessage.ToString(), forwardingMessage.TargetName);
             this.clientDataManager.WriteData(forwardingMessage.InnerMessage, forwardingMessage.Target);
         }
 
@@ -478,7 +478,7 @@ namespace Server.Application
         /// <param name="eventArgs">Contains the scores request message, which doesn't contain any parameters.</param>
         private void ClientSendScores(object sender, MessageEventArgs eventArgs)
         {
-            ScoresRequestMessage requestMessage = eventArgs.MessageContent as ScoresRequestMessage;
+            ScoresRequestMessage requestMessage = eventArgs.Message as ScoresRequestMessage;
             this.LogReceivedClient(requestMessage, sender);
             List<ScoreEntry> scores = this.GetScores();
 
@@ -566,7 +566,7 @@ namespace Server.Application
         /// <param name="eventArgs">Contains the client disconnect message.</param>
         private void ClientDisconnect(object sender, MessageEventArgs eventArgs)
         {
-            this.LogReceivedClient(eventArgs.MessageContent, sender);
+            this.LogReceivedClient(eventArgs.Message, sender);
             Client client = this.GetClientFromSenderInformation(sender);
 
             // Is this client even connected?
@@ -637,7 +637,7 @@ namespace Server.Application
         private void MonitorConnectionRequest(object sender, MessageEventArgs eventArgs)
         {
             this.LogText(string.Format("Connection request from Monitor ({0}) to {1}", sender, this.configuration.ServerName));
-            this.LogReceivedMonitor(eventArgs.MessageContent, sender);
+            this.LogReceivedMonitor(eventArgs.Message, sender);
             var monitor = this.monitors.FirstOrDefault(p => p.TargetInformation.Equals(sender));
 
             // Allow connection depending on if the monitor is already connected or not.
@@ -666,7 +666,7 @@ namespace Server.Application
         private void MonitorDisconnect(object sender, MessageEventArgs eventArgs)
         {
             Monitor monitor = this.monitors.FirstOrDefault(p => p.TargetInformation.Equals(sender));
-            this.LogReceivedMonitor(eventArgs.MessageContent, monitor);
+            this.LogReceivedMonitor(eventArgs.Message, monitor);
 
             // Is this monitor even connected?
             if (monitor != null)

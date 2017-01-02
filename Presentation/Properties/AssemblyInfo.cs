@@ -40,7 +40,6 @@ using System.Windows;
                                               // designspezifischen Ressourcenwörterbuch nicht gefunden werden kann.)
 )]
 
-
 // Versionsinformationen für eine Assembly bestehen aus den folgenden vier Werten:
 //
 //      Hauptversion

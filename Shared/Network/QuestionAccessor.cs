@@ -1,18 +1,25 @@
-﻿using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static System.Net.Mime.MediaTypeNames;
-
+﻿//-----------------------------------------------------------------------
+// <copyright file="QuestionAccessor.cs" company="Lukas Handler">
+//     Lukas Handler
+// </copyright>
+// <summary>
+// This file represents the question accessor.
+// </summary>
+//-----------------------------------------------------------------------
 namespace Shared.Data
 {
+    using System.Collections.Generic;
+    using System.IO;
+    using Newtonsoft.Json;
+
+    /// <summary>
+    /// THis class represents the question accessor.
+    /// </summary>
     public static class QuestionAccessor
     {
-        public static List<MathQuestion> MathQuestions;
-
+        /// <summary>
+        /// Initializes the <see cref="QuestionAccessor"/> class.
+        /// </summary>
         static QuestionAccessor()
         {
             using (StreamReader r = new StreamReader(System.AppDomain.CurrentDomain.BaseDirectory + @"/Resources/questions.json"))
@@ -21,5 +28,8 @@ namespace Shared.Data
                 MathQuestions = JsonConvert.DeserializeObject<List<MathQuestion>>(fileText);
             }
         }
+
+            
+        public static List<MathQuestion> MathQuestions { get; set; }
     }
 }
