@@ -98,7 +98,9 @@
     <Compile Include="Messages\BroadcastResponseMessage.cs" />
     <Compile Include="Messages\ServerScoreRequestMessage.cs" />
     <Compile Include="Messages\ServerScoreResponseMessage.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs">
+      <ExcludeFromStyleCop>True</ExcludeFromStyleCop>
+    </Compile>
     <Compile Include="QuestionAccessor.cs" />
     <Compile Include="ScoreEntry.cs" />
   </ItemGroup>

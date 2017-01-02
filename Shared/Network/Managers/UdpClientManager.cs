@@ -47,7 +47,7 @@ namespace Shared.Data.Managers
         /// <summary>
         /// Writes the data.
         /// </summary>
-        /// <param name="data">The data.</param>
+        /// <param name="data">The data to send.</param>
         /// <param name="target">The target.</param>
         public void WriteData(Message data, object target)
         {
@@ -81,11 +81,11 @@ namespace Shared.Data.Managers
         /// <summary>
         /// Receives the data.
         /// </summary>
-        /// <param name="data">The data.</param>
-        private void ReceivedData(IAsyncResult data)
+        /// <param name="asyncResult">The async result.</param>
+        private void ReceivedData(IAsyncResult asyncResult)
         {
             IPEndPoint senderIp = new IPEndPoint(IPAddress.Any, 0);
-            byte[] received = this.udpStream.EndReceive(data, ref senderIp);
+            byte[] received = this.udpStream.EndReceive(asyncResult, ref senderIp);
             this.udpStream.BeginReceive(this.ReceivedData, null);
 
             Message receivedMessage = MessageByteConverter.ConvertToMessage(received);

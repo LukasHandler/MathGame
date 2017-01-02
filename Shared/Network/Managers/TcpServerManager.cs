@@ -36,14 +36,14 @@ namespace Shared.Data.Managers
         private IPEndPoint localEndPoint;
 
         /// <summary>
-        /// The port of the server
+        /// The port of the server.
         /// </summary>
         private int port;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TcpServerManager"/> class.
         /// </summary>
-        /// <param name="port">The port.</param>
+        /// <param name="port">The server port.</param>
         public TcpServerManager(int port)
         {
             this.port = port;

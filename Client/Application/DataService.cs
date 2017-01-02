@@ -125,7 +125,7 @@ namespace Client.Application
         /// Gets or sets the event which gets fired when the client received a question.
         /// </summary>
         /// <value>
-        /// The event which gets fired when the client received a question
+        /// The event which gets fired when the client received a question.
         /// </value>
         public EventHandler<QuestionEventArgs> OnQuestionReceived { get; set; }
 

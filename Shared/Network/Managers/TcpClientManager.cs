@@ -25,7 +25,7 @@ namespace Shared.Data.Managers
         /// <summary>
         /// Sends the data.
         /// </summary>
-        /// <param name="data">The data.</param>
+        /// <param name="data">The data to send.</param>
         /// <param name="target">The target.</param>
         protected override void SendData(byte[] data, IPEndPoint target)
         {

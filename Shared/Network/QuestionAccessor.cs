@@ -18,7 +18,7 @@ namespace Shared.Data
     public static class QuestionAccessor
     {
         /// <summary>
-        /// Initializes the <see cref="QuestionAccessor"/> class.
+        /// Initializes static members of the <see cref="QuestionAccessor"/> class.
         /// </summary>
         static QuestionAccessor()
         {
@@ -29,7 +29,12 @@ namespace Shared.Data
             }
         }
 
-            
+        /// <summary>
+        /// Gets or sets the math questions.
+        /// </summary>
+        /// <value>
+        /// The math questions.
+        /// </value>
         public static List<MathQuestion> MathQuestions { get; set; }
     }
 }
