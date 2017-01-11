@@ -96,11 +96,11 @@ namespace Shared.Data.Managers
         protected override void Connect(IPEndPoint target)
         {
             TcpClient client = new TcpClient();
+            client.Connect(target);
+            this.AddClient(client, target);
 
             try
             {
-                client.Connect(target);
-                this.AddClient(client, target);
                 this.StartReading(client.GetStream(), target);
             }
             catch (Exception)

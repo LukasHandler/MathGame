@@ -213,15 +213,19 @@ namespace Server.Application
                 this.otherServer.TargetInformation.Remove(this.otherServer.TargetInformation.Last(p => p.Equals(server)));
                 this.OnServerConnectionCountChanged?.Invoke(this, new ServerConnectionCountChangedEventArgs(this.ServerConnectionCount));
 
-                if (this.ServerConnectionCount == 0)
+                // Might happen if the server connects to itself.
+                if (this.otherServer != null)
                 {
-                    this.LogText("{0} disconnected from {1}", this.ToString(), this.otherServer.ToString());
-                    this.isActive = true;
-                    this.otherServer = null;
-                }
-                else
-                {
-                    this.LogText("{0} closed a connection to {1}", this.ToString(), this.otherServer.ToString());
+                    if (this.ServerConnectionCount == 0)
+                    {
+                        this.LogText("{0} disconnected from {1}", this.ToString(), this.otherServer.ToString());
+                        this.isActive = true;
+                        this.otherServer = null;
+                    }
+                    else
+                    {
+                        this.LogText("{0} closed a connection to {1}", this.ToString(), this.otherServer.ToString());
+                    }
                 }
             }
         }
@@ -452,7 +456,6 @@ namespace Server.Application
             {
                 ConnectionDeniedMessage deniedMessage = new ConnectionDeniedMessage();
                 this.SendClientMessage(deniedMessage, sender);
-                this.LogText("{0} sent {1} to {2}", this.ToString(), deniedMessage.ToString(), senderName);
             }
             else
             {
@@ -842,7 +845,7 @@ namespace Server.Application
         /// <returns>The client to the sender information. Null if there was no match.</returns>
         private Client GetClientFromSenderInformation(object senderInformation)
         {
-            return this.clients.FirstOrDefault(p => p.TargetInformation.Equals(senderInformation));
+            return this.clients.FirstOrDefault(p => object.Equals(p.TargetInformation, senderInformation));
         }
 
         /// <summary>

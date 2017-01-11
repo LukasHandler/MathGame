@@ -5,5 +5,5 @@
 	"ServerPort": "4902",
 	"MaxScore": "10",
   "MinScore": "-5",
-  "UseNamedPipes":  "true"
+  "UseNamedPipes": "false"
  }

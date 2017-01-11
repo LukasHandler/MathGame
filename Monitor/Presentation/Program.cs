@@ -10,6 +10,7 @@ namespace Monitor.Presentation
 {
     using System;
     using System.Net;
+    using System.Threading;
     using Application;
     using Application.EventArguments;
 
@@ -24,11 +25,33 @@ namespace Monitor.Presentation
         /// <param name="args">The command line arguments.</param>
         private static void Main(string[] args)
         {
+            bool isConnected = false;
             var serverEndPoint = GetIPEndPoint();
             DataService dataService = new DataService();
+            string errorMessage = "Couldn't create connection, please restart and try again";
+            bool printedErrorMessage = false;
+
+            Action timedOutAction = delegate
+            {
+                Thread.Sleep(3000);
+                if (!isConnected && !printedErrorMessage)
+                {
+                    Console.WriteLine(errorMessage);
+                    Console.ReadLine();
+                    Environment.Exit(1);
+                }
+            };
+
+            ThreadStart timeOutThread = new ThreadStart(timedOutAction);
+            timeOutThread.BeginInvoke(null, null);
 
             try
             {
+                dataService.OnConnectionCreated += delegate(object sender, EventArgs arguments)
+                {
+                    isConnected = true;
+                };
+
                 dataService.Register(serverEndPoint);
                 dataService.OnLoggingDataReceived += PrintLogging;
 
@@ -37,7 +60,8 @@ namespace Monitor.Presentation
             }
             catch (Exception)
             {
-                Console.WriteLine("Couldn't create connection, please restart and try again");
+                Console.WriteLine(errorMessage);
+                printedErrorMessage = true;
                 Console.ReadLine();
             }
         }

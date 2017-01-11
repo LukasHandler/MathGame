@@ -76,7 +76,7 @@ namespace Shared.Data.Managers
                 {
                     var newClient = new NamedPipeClientStream(".", targetPipe, PipeDirection.Out, PipeOptions.Asynchronous);
                     this.clients.Add(targetPipe, newClient);
-                    newClient.Connect();
+                    newClient.Connect(3000);
                     newClient.ReadMode = PipeTransmissionMode.Message;
                 }
             }

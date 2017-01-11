@@ -56,6 +56,14 @@ namespace Monitor.Application
         public EventHandler<LoggingEventArgs> OnLoggingDataReceived { get; set; }
 
         /// <summary>
+        /// Gets or sets the on connection created event.
+        /// </summary>
+        /// <value>
+        /// The on connection created event.
+        /// </value>
+        public EventHandler OnConnectionCreated { get; set; }
+
+        /// <summary>
         /// Registers to the specified server target.
         /// </summary>
         /// <param name="serverTargetInformation">The server target information.</param>
@@ -102,6 +110,7 @@ namespace Monitor.Application
         private void ConnectionAccepted(object sender, EventArgs eventArgs)
         {
             this.isConnected = true;
+            this.OnConnectionCreated?.Invoke(this, EventArgs.Empty);
         }
     }
 }

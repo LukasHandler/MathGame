@@ -47,11 +47,6 @@ namespace Presentation.ViewModels
         private int serverConnectionPort;
 
         /// <summary>
-        /// The server port when connecting to another server.
-        /// </summary>
-        private int serverPort;
-
-        /// <summary>
         /// The server connections count (from server to server).
         /// </summary>
         private int serverConnections;
@@ -75,6 +70,11 @@ namespace Presentation.ViewModels
         /// The configuration of the server.
         /// </summary>
         private ServerConfiguration configuration;
+
+        /// <summary>
+        /// Represents if the server uses named pipes for client to server communication.
+        /// </summary>
+        private bool isNamedPipes;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MainViewModel"/> class.
@@ -118,6 +118,7 @@ namespace Presentation.ViewModels
                 this.MonitorConnectionPort = this.configuration.MonitorPort;
                 this.ClientConnectionPort = this.configuration.ClientPort;
                 this.ServerConnectionPort = this.configuration.ServerPort;
+                this.IsNamedPipes = this.configuration.UseNamedPipes;
 
                 // Start servers.
                 try
@@ -331,6 +332,26 @@ namespace Presentation.ViewModels
                 }
 
                 return this.removeConnection;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the server to client connection uses named pipes.
+        /// </summary>
+        /// <value>
+        /// <c>true</c> if the server to client connection uses named pipes; otherwise, <c>false</c>.
+        /// </value>
+        public bool IsNamedPipes
+        {
+            get
+            {
+                return this.isNamedPipes;
+            }
+
+            set
+            {
+                this.isNamedPipes = value;
+                this.OnPropertyChanged();
             }
         }
 

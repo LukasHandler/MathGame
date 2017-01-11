@@ -425,9 +425,9 @@ namespace Client.Presentation.ViewModels
                                 this.dataService.Connect(new IPEndPoint(this.ServerAddress, this.ServerPort), this.PlayerName, this.IsNamedPipes);
                             }
                         }
-                        catch (Exception exc)
+                        catch (Exception)
                         {
-                            MessageBox.Show(exc.Message);
+                            MessageBox.Show("Couldn't connect to server. Server not found.");
                         }
                     };
 
